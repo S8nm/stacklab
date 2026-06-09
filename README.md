@@ -3,18 +3,25 @@
 A fully static, client-side tool to visualize how peptide / supplement / compound stacks connect to target organs — with **live synergy (green)**, **clash (red)**, and **organ-stress** mapping. No backend, no accounts, no data leaves the browser.
 
 ## Features
-- **Live network graph** (vis-network): compounds → target organs, with synergy/clash edges drawn in real time.
-- **122-compound open database** across peptides, supplements, and oral/Rx — each with route, half-life, bioavailability, evidence grade, target-organ effects, dosing, blood-marker impact, cautions, cofactors, and named references.
+- **Live network graph** (vis-network): compounds → target organs, with synergy/clash edges drawn in real time (clash edges are tiered — critical = bold, redundant = faint).
+- **138-compound open database** across peptides, supplements, and oral/Rx — each with route, half-life, bioavailability, evidence grade, target-organ effects, dosing, blood-marker impact, cautions, cofactors, and named references.
+- **Weighted stack intelligence** (the Live Blueprint):
+  - **Stack-balance summary** — a support↔stress meter, peak-loaded organ, critical-clash & not-reversible counts.
+  - **Organ-load heatmap** — weighted bars (a negative hit and severe wording weigh more than a mild caution), so four hepatotoxic items read "Liver: HIGH", one mild item reads "LOW".
+  - **Net-balanced polypharmacy flags** — each axis (glucose, cardiac/HR-BP, sedation, stimulation, GH/IGF, bleeding) is scored by **signed magnitude**: things that raise an axis cancel things that lower it, so a stack that "balances out" is shown as balanced rather than double-flagged.
+  - **Tiered clashes** — CRITICAL (e.g. additive hypoglycemia) vs CAUTION vs REDUNDANT render distinctly and sort by severity.
+  - **Redundancy consolidation** — for redundant pairs it tells you which to **keep** (stronger evidence) and gives a one-click **drop** button for the other.
+  - **Labs to monitor** — aggregates each compound's blood-marker impact into the panel of tests to run (IGF-1, ALT, lipids, hematocrit, estradiol…).
+  - **Clean recommendations** — suggests supportive partners (incl. **supplements for each peptide**) and **never suggests anything that clashes with or is redundant to the current stack**.
 - **Reversibility tags** — every compound is flagged `reversible` / `caution` / `not fully reversible`, with a **♻ reversible-only filter**.
 - **Evidence filter** — narrow the list to A / A–B / A–C grades.
 - **Food / drug interactions** — alcohol, grapefruit/CYP, caffeine, nitrates, anticoagulants, etc., surfaced both per-compound and as an aggregated **Food / Drug Watch** for the whole stack (danger-first).
 - **Research links** — each compound lists real named trials/sources and an auto-generated **PubMed search** link (no fabricated DOIs).
 - **Goal presets** — Longevity, General Health, Cognitive, Fat Loss, Muscle, Hormonal.
-- **Live blueprint** — primary goals, organ-stress profile, and smart recommendations (clash warnings, missing synergy partners you can click to add, cofactor hints).
 
 ## Files
 - `index.html` — the whole app (HTML + Tailwind via CDN + vanilla JS + vis-network graph).
-- `compoundsData.js` — the editable, crowdsource-friendly compound database (122 entries).
+- `compoundsData.js` — the editable, crowdsource-friendly compound database (138 entries).
 
 ## Run locally
 Just **double-click `index.html`** — it works straight off the filesystem (`file://`), no server needed. (PubMed links open in a new tab.)

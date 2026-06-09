@@ -296,24 +296,25 @@
   const RE_MINOR = /redundant|overlap|pick one|overkill|double|2nd |both\b|same day/i;
   function clashSev(risk){ risk = String(risk||""); return RE_CRIT.test(risk) ? "critical" : (RE_MINOR.test(risk) ? "minor" : "moderate"); }
 
-  // polypharmacy detectors — curated where text isn't reliable, else derived from fields
-  const SEDATIVE  = new Set(["melatonin","glycine","magnesium","l-theanine","dsip","selank","apigenin","ashwagandha","tart-cherry"]);
-  const STIMULANT = new Set(["caffeine","nicotine","modafinil","bupropion","semax","l-tyrosine","rhodiola"]);
-  function sigText(c){ return [c.class,(c.cautions||[]).join(" "),(c.bloodMarkerImpact||[]).join(" "),(c.targetOrgans||[]).map(t=>t.note).join(" ")].join(" ").toLowerCase(); }
-  function detectTags(act){
-    const t = { glu:[], hr:[], stim:[], sed:[], liver:[], igf:[], bleed:[], bp:[] };
-    act.forEach(c => {
-      const s = sigText(c), m = (c.bloodMarkerImpact||[]).join(" ").toLowerCase();
-      if(/↓\s*(glucose|hba1c)/.test(m)) t.glu.push(c.name);
-      if(/↑\s*(hr|bp|heart rate|blood pressure)|tachy|arrhythm|vasoconstrict/.test(s)) t.hr.push(c.name);
-      if(STIMULANT.has(c.id) || /wakefulness|overstimulat/.test(s)) t.stim.push(c.name);
-      if(SEDATIVE.has(c.id)) t.sed.push(c.name);
-      if((c.targetOrgans||[]).some(o=>o.organ==="Liver"&&o.effect==="negative") || /hepatotox/.test(s)) t.liver.push(c.name);
-      if(/↑\s*igf-1/.test(m)) t.igf.push(c.name);
-      if(/antiplatelet|anticoagulant|bleeding/.test(s) || (c.foodDrug||[]).some(f=>/bleeding|anticoagulant/i.test(f.effect))) t.bleed.push(c.name);
-      if(/↓\s*(bp|blood pressure)/.test(m) || /pde5|vasodilat/.test(s)) t.bp.push(c.name);
-    });
-    return t;
+  // weighted polypharmacy axes — signed magnitudes so raisers offset loweres (net), not just counts.
+  // negative = lowers that axis · positive = raises it. magnitude ≈ clinical strength (0.25 trivial … 4 dominant).
+  const AX = {
+    glucose:{ retatrutide:-3,tirzepatide:-3,semaglutide:-3,liraglutide:-2,survodutide:-2,mazdutide:-2,cagrilintide:-1,pramlintide:-1,
+              metformin:-2,berberine:-2,acarbose:-2,empagliflozin:-2,"myo-inositol":-1,"alpha-lipoic-acid":-1,"mots-c":-1,chromium:-0.5,taurine:-0.5,"5-amino-1mq":-0.5,"igf1-lr3":-2,insulin:-4,
+              "mk-677":2,hgh:2,tesamorelin:1,"cjc-1295":0.5,sermorelin:0.5,niacin:1,clenbuterol:0.5,"t3-liothyronine":0.5,oxandrolone:0.5,trenbolone:0.5,rapamycin:0.5 },
+    cardiac:{ caffeine:1,nicotine:1.5,modafinil:1,bupropion:1,retatrutide:1,tirzepatide:0.5,semaglutide:0.5,clenbuterol:3,"t3-liothyronine":2,trenbolone:1.5,"mk-677":0.5,hexarelin:1,"pt-141":1,"melanotan-2":0.5,hgh:0.5,setmelanotide:0.5,"ghrp-2":0.5,tesofensine:1,
+              taurine:-1,magnesium:-0.5,"omega-3":-0.5,tadalafil:-1.5,sildenafil:-1.5,vip:-1.5,"l-theanine":-0.5,ashwagandha:-0.5,coq10:-0.5,empagliflozin:-0.5,berberine:-0.25,"tart-cherry":-0.25,bergamot:-0.25 },
+    sedation:{ melatonin:1.5,ashwagandha:1.5,dsip:1.5,apigenin:0.75,glycine:0.5,"l-theanine":0.5,magnesium:0.5,"tart-cherry":0.5,selank:0.5,sertraline:0.5,taurine:0.25,"low-dose-naltrexone":0.25 },
+    stim:{ modafinil:2,tesofensine:2,caffeine:1.5,nicotine:1.5,bupropion:1.5,semax:1,"l-tyrosine":1,rhodiola:1,"alpha-gpc":0.25,citicoline:0.25 },
+    igf:{ hgh:3,"igf1-lr3":3,tesamorelin:2,"cjc-1295":2,hexarelin:2,"mk-677":2,ipamorelin:1.5,"ghrp-2":1.5,"ghrp-6":1.5,sermorelin:1,mgf:1 },
+    bleed:{ "omega-3":1,curcumin:1,resveratrol:1,boswellia:0.5,pterostilbene:0.5 }
+  };
+  // returns net (signed sum), plus/minus contributor names, and sum (total absolute load)
+  function axisScore(act, table){
+    let net = 0, sum = 0; const plus = [], minus = [];
+    act.forEach(c => { const w = table[c.id]; if(w==null) return; net += w; sum += Math.abs(w); (w>0?plus:minus).push(c.name); });
+    const r = x => Math.round(x*10)/10;
+    return { net:r(net), sum:r(sum), plus, minus, n:plus.length+minus.length };
   }
   // free-text blood-marker → canonical lab test
   const LABMAP = [
@@ -611,22 +612,32 @@
         </div>
       </div>` : "";
 
-    // ---- Stack flags (polypharmacy + reversibility)
-    const tags = detectTags(act);
-    const cap = arr => arr.slice(0,4).join(", ") + (arr.length>4 ? " +"+(arr.length-4) : "");
+    // ---- Stack flags: weighted axes, net-balanced (raisers cancel loweres)
     const flags = [];
-    const pushFlag = (arr, min, lvl, msg) => { if(arr.length>=min) flags.push({ lvl, msg:msg(arr.length), names:cap(arr) }); };
-    pushFlag(tags.glu,   2, tags.glu.length>=3?"crit":"warn", n=>`${n} glucose-lowering agents — additive hypoglycemia risk`);
-    pushFlag(tags.hr,    2, tags.hr.length>=3?"crit":"warn",  n=>`${n} agents raise heart rate / BP — additive cardiac load`);
-    pushFlag(tags.stim,  2, "warn", n=>`${n} stimulants — additive overstimulation, anxiety & sleep loss`);
-    pushFlag(tags.sed,   3, "info", n=>`${n} CNS-calming agents — additive sedation`);
-    pushFlag(tags.liver, 2, "crit", n=>`${n} hepatotoxic compounds — cumulative liver strain`);
-    pushFlag(tags.igf,   2, "warn", n=>`${n} GH/IGF agents — additive IGF-1 & glucose load`);
-    pushFlag(tags.bleed, 2, "warn", n=>`${n} blood-thinning agents — additive bleeding risk`);
-    pushFlag(tags.bp,    2, "warn", n=>`${n} BP-lowering agents — additive hypotension`);
+    const fmt = arr => arr.slice(0,5).join(", ") + (arr.length>5 ? " +"+(arr.length-5) : "");
+    // bidirectional axes — net the opposing directions before flagging
+    const bidir = (key, name, band, critAt, upMsg, dnMsg) => {
+      const a = axisScore(act, AX[key]); if(!a.n) return;
+      const names = `↓ ${fmt(a.minus)||'—'}   ↑ ${fmt(a.plus)||'—'}`;
+      if(a.net <= -band)      flags.push({ lvl:a.net<=-critAt?"crit":"warn", msg:dnMsg(a.net), names });
+      else if(a.net >= band)  flags.push({ lvl:a.net>=critAt?"crit":"warn",  msg:upMsg(a.net), names });
+      else if(a.n>=2)         flags.push({ lvl:"info", msg:`${name} effects roughly balanced (net ${a.net>0?'+':''}${a.net})`, names });
+    };
+    bidir("glucose","Glucose",3,5, n=>`Net glucose-raising (+${n}) — insulin-resistance watch`, n=>`Net glucose-lowering (${n}) — hypoglycemia risk`);
+    bidir("cardiac","Cardiac",3,4.5, n=>`Net ↑ heart rate / BP (+${n}) — cardiac load`, n=>`Net ↓ blood pressure (${n}) — hypotension watch`);
+    // one-directional cumulative loads (weighted, not counted)
+    const oneDir = (key, warnAt, infoAt, label) => {
+      const a = axisScore(act, AX[key]); if(a.sum < infoAt) return;
+      flags.push({ lvl:a.sum>=warnAt?"warn":"info", msg:`${label} (load ${a.sum})`, names:fmt(a.plus) });
+    };
+    oneDir("sedation", 5, 3,   "CNS-sedation stack — additive drowsiness");
+    oneDir("stim",     3.5, 2, "Stimulant stack — overstimulation / sleep loss");
+    oneDir("igf",      4, 2.5, "GH/IGF stack — additive IGF-1 & glucose");
+    oneDir("bleed",    2, 1,   "Blood-thinning stack — bleeding risk");
+    // reversibility (the vault's core rule)
     const cauRev = act.filter(c => c.reversible==="caution");
-    if(notRev.length) flags.unshift({ lvl:"crit", msg:`${notRev.length} compound(s) with effects that are not fully reversible`, names:cap(notRev.map(c=>c.name)) });
-    if(cauRev.length) flags.push({ lvl:"info", msg:`${cauRev.length} compound(s) carry a reversibility caveat`, names:cap(cauRev.map(c=>c.name)) });
+    if(notRev.length) flags.unshift({ lvl:"crit", msg:`${notRev.length} compound(s) not fully reversible`, names:fmt(notRev.map(c=>c.name)) });
+    if(cauRev.length) flags.push({ lvl:"info", msg:`${cauRev.length} compound(s) with a reversibility caveat`, names:fmt(cauRev.map(c=>c.name)) });
     const FLV = { crit:["■","text-rose","bg-rose/10 border-rose/30"], warn:["▲","text-amber","bg-amber/[.07] border-amber/25"], info:["●","text-sky","bg-sky/[.06] border-sky/25"] };
     const flvRank = { crit:3, warn:2, info:1 };
     flags.sort((a,b)=>flvRank[b.lvl]-flvRank[a.lvl]);
@@ -636,39 +647,60 @@
             <span class="${tc} shrink-0 mono">${ic}</span>
             <span class="text-txt/80">${f.msg}<span class="block mono text-[10px] text-muted mt-0.5">${f.names}</span></span>
           </div>`; }).join("")
-        : `<p class="mono text-[11.5px] text-mint/80">✓ no polypharmacy or reversibility flags.</p>`)
+        : `<p class="mono text-[11.5px] text-mint/80">✓ no weighted polypharmacy or reversibility flags.</p>`)
       : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
 
-    // ---- Smart recommendations: tiered clashes → add-synergy → cofactor
+    // ---- Smart recommendations: warn clashes (tiered) · consolidate redundancy · clean adds
     const clashList = []; const seenC = new Set();
     act.forEach(c => (c.clashes||[]).forEach(s => {
-      if(!state.active.has(s.id)) return;
+      if(!state.active.has(s.id) || !byId[s.id]) return;
       const k = [c.id,s.id].sort().join("|"); if(seenC.has(k)) return; seenC.add(k);
-      clashList.push({ sev:clashSev(s.risk), a:c.name, b:byId[s.id].name, risk:s.risk });
+      clashList.push({ sev:clashSev(s.risk), aId:c.id, bId:s.id, a:c.name, b:byId[s.id].name, risk:s.risk });
     }));
-    clashList.sort((x,y)=>SEV[y.sev].rank-SEV[x.sev].rank);
-    const clashHtml = clashList.map(cl => { const s=SEV[cl.sev]; return `
+    // redundant pairs → keep the better-evidenced compound, drop the other (one entry per loser)
+    const drop = new Map();
+    clashList.filter(c=>c.sev==="minor").forEach(cl => {
+      const ea = EVR[byId[cl.aId].evidence]||0, eb = EVR[byId[cl.bId].evidence]||0;
+      let winId, loseId;
+      if(ea!==eb){ winId = ea>eb?cl.aId:cl.bId; loseId = ea>eb?cl.bId:cl.aId; }
+      else { const keepA = cl.aId.localeCompare(cl.bId)<=0; winId = keepA?cl.aId:cl.bId; loseId = keepA?cl.bId:cl.aId; }
+      const prev = drop.get(loseId), winEv = EVR[byId[winId].evidence]||0;
+      if(!prev || winEv>prev.ev) drop.set(loseId, { winner:byId[winId].name, ev:winEv });
+    });
+    const consolidateHtml = [...drop.entries()].map(([loseId,info]) => `
+      <div class="flex items-center gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border border-line bg-white/[.03]">
+        <span class="text-muted shrink-0 mono">●</span>
+        <span class="text-txt/80 flex-1"><span class="mono text-[9px] text-muted mr-1">[REDUNDANT]</span>Drop <b>${byId[loseId].name}</b> — keep <b>${info.winner}</b> (stronger evidence)</span>
+        <button data-remove="${loseId}" class="shrink-0 mono text-[10px] px-2 py-0.5 rounded border border-rose/40 text-rose hover:bg-rose/10 transition">✕ drop</button>
+      </div>`).join("");
+    // genuine (non-redundant) clashes → tiered warnings
+    const warnClashHtml = clashList.filter(c=>c.sev!=="minor").sort((x,y)=>SEV[y.sev].rank-SEV[x.sev].rank).map(cl => { const s=SEV[cl.sev]; return `
       <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border ${s.box} ${cl.sev==='critical'?'warnpulse':''}">
         <span class="${s.txt} shrink-0 mono" title="${s.label}">${s.icon}</span>
         <span class="text-txt/80"><span class="mono text-[9px] ${s.txt} mr-1">[${s.label}]</span><b>${cl.a} × ${cl.b}</b> — ${cl.risk}</span>
       </div>`; }).join("");
 
+    // clean add-suggestions: never suggest anything that clashes with (or is redundant to) the active stack
+    const conflict = new Set();
+    act.forEach(c => (c.clashes||[]).forEach(s => conflict.add(s.id)));
+    const wouldClash = id => conflict.has(id) || (byId[id].clashes||[]).some(x => state.active.has(x.id));
     const seenSy = new Set(); const addHtmlArr = [];
     act.forEach(c => (c.synergies||[]).forEach(s => {
-      if(state.active.has(s.id) || !byId[s.id]) return;
-      const k = c.id+">"+s.id; if(seenSy.has(k)) return; seenSy.add(k);
+      if(state.active.has(s.id) || !byId[s.id] || wouldClash(s.id) || drop.has(s.id) || seenSy.has(s.id)) return;
+      seenSy.add(s.id);
       addHtmlArr.push(`<div data-add="${s.id}" role="button" class="rec flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border border-mint/30 bg-mint/[.06] cursor-pointer hover:border-mint/60">
-        <span class="text-mint shrink-0 mono">＋</span><span class="text-txt/80">Consider <b>${byId[s.id].name}</b> — ${s.reason}</span></div>`);
+        <span class="text-mint shrink-0 mono">＋</span><span class="text-txt/80">Add <b>${byId[s.id].name}</b> — ${s.reason}</span></div>`);
     }));
     const coHtml = act.filter(c=>c.cofactor).map(c => `
       <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border border-sky/25 bg-sky/[.06]">
         <span class="text-sky shrink-0 mono">◆</span><span class="text-txt/80"><b>${c.name}:</b> ${c.cofactor}</span></div>`).join("");
 
-    const recsHtml = clashHtml + addHtmlArr.join("") + coHtml;
+    const recsHtml = warnClashHtml + consolidateHtml + addHtmlArr.join("") + coHtml;
     $("#bpRecs").innerHTML = act.length
       ? (recsHtml || `<p class="mono text-[11.5px] text-muted/70">No modifiers — clean, minimal combination.</p>`)
       : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
     $("#bpRecs").querySelectorAll("[data-add]").forEach(el => el.onclick = () => toggle(el.getAttribute("data-add")));
+    $("#bpRecs").querySelectorAll("[data-remove]").forEach(el => el.onclick = () => { state.active.delete(el.getAttribute("data-remove")); state.preset=null; render(); });
 
     // ---- Labs to monitor (aggregated from blood-marker impact + cofactor + cautions)
     const labHits = new Map();

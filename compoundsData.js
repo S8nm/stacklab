@@ -608,5 +608,116 @@ window.COMPOUNDS = [
 
 { id:"nicotine",name:"Nicotine",category:"oral",route:"Pouch / gum / patch",class:"Nicotinic acetylcholine agonist",halfLife:"~2 h",bioavailability:"Buccal/transdermal",reversible:"caution",evidence:"B",
   desc:"Stimulant nootropic (focus/appetite) — but addictive, raises HR/BP, vasoconstricts.",
-  targetOrgans:[O("Brain / CNS","positive","focus/attention (acute)"),O("Cardiovascular","negative","↑ HR/BP, vasoconstriction"),O("Adipose Tissue","positive","appetite suppression")],synergies:[],clashes:[],bloodMarkerImpact:["↑ HR/BP"],foodDrug:[FD("Caffeine","additive stimulation/anxiety")],dosingInfo:"Non-combusted forms; education only.",cautions:["Addictive","↑ HR/BP, vasoconstriction","Dependence"],cofactor:null,refs:["Cognition/cessation literature"] }
+  targetOrgans:[O("Brain / CNS","positive","focus/attention (acute)"),O("Cardiovascular","negative","↑ HR/BP, vasoconstriction"),O("Adipose Tissue","positive","appetite suppression")],synergies:[],clashes:[],bloodMarkerImpact:["↑ HR/BP"],foodDrug:[FD("Caffeine","additive stimulation/anxiety")],dosingInfo:"Non-combusted forms; education only.",cautions:["Addictive","↑ HR/BP, vasoconstriction","Dependence"],cofactor:null,refs:["Cognition/cessation literature"] },
+
+/* =============================== PEPTIDES — HORMONAL / REPRO (added) =============================== */
+{ id:"gonadorelin",name:"Gonadorelin",category:"peptide",route:"SubQ (pulsatile)",class:"GnRH analog (HPG)",halfLife:"~minutes",bioavailability:"Subcutaneous",reversible:"yes",evidence:"B",
+  desc:"Synthetic GnRH — pulses stimulate LH/FSH to preserve testicular function & fertility on TRT; requires pulsatile dosing.",
+  targetOrgans:[O("Endocrine","positive","↑ LH/FSH → testosterone"),O("Prostate / Repro","positive","fertility / testes size")],
+  synergies:[S("hcg","HPG support"),S("enclomiphene","HPTA stimulation")],clashes:[C("testosterone","TRT suppresses the GnRH axis gonadorelin drives")],
+  bloodMarkerImpact:["↑ LH/FSH","↑ testosterone"],foodDrug:[],dosingInfo:"Pulsatile SubQ; continuous dosing desensitizes the axis. Prescriber-directed.",cautions:["Desensitization if not pulsatile","Very short half-life"],cofactor:null,refs:["GnRH clinical pharmacology"] },
+
+{ id:"triptorelin",name:"Triptorelin",category:"peptide",route:"IM (depot)",class:"GnRH agonist (Rx depot)",halfLife:"Depot (weeks)",bioavailability:"IM depot",reversible:"caution",evidence:"B",
+  desc:"Long-acting GnRH agonist — after an initial flare it shuts down LH/FSH (prostate cancer, endometriosis); a single dose suppresses for weeks.",
+  targetOrgans:[O("Endocrine","negative","sustained HPG suppression"),O("Prostate / Repro","caution","testosterone shutdown"),O("Bone","caution","low-sex-hormone bone loss (chronic)")],
+  synergies:[],clashes:[C("testosterone","opposing HPG signals"),C("gonadorelin","opposing GnRH strategy")],bloodMarkerImpact:["↓ LH/FSH","↓ testosterone (after flare)"],foodDrug:[],dosingInfo:"Depot IM; clinician-only.",cautions:["Initial testosterone flare","Prolonged suppression","Bone density (chronic)"],cofactor:null,refs:["GnRH-agonist labels"] },
+
+/* =============================== PEPTIDES — INCRETIN / METABOLIC (added) =============================== */
+{ id:"pramlintide",name:"Pramlintide",category:"peptide",route:"SubQ (with meals)",class:"Amylin analog (approved)",halfLife:"~48 min",bioavailability:"Subcutaneous",reversible:"yes",evidence:"A",
+  desc:"Short-acting amylin analog (Symlin) — slows gastric emptying, blunts post-meal glucose & appetite; used alongside insulin.",
+  targetOrgans:[O("Pancreas","positive","post-meal glucose"),O("Brain / CNS","positive","satiety"),O("Gut / GI","caution","nausea, slowed emptying")],
+  synergies:[S("insulin","mealtime glucose control — reduce insulin dose")],clashes:[],
+  bloodMarkerImpact:["↓ post-meal glucose","↓ weight"],foodDrug:[FD("Insulin","additive hypoglycemia — dose reduction needed")],dosingInfo:"SubQ before meals, separate from insulin. Prescriber-directed.",cautions:["Hypoglycemia with insulin","Nausea"],cofactor:null,refs:["Symlin FDA label"] },
+
+{ id:"insulin",name:"Insulin (exogenous)",category:"peptide",route:"SubQ",class:"Anabolic peptide hormone (Rx)",halfLife:"Analog-dependent",bioavailability:"Subcutaneous",reversible:"caution",evidence:"A",
+  desc:"The master storage hormone — drives glucose & amino acids into cells; potent, but a dosing error causes dangerous hypoglycemia.",
+  targetOrgans:[O("Pancreas","caution","exogenous overrides feedback"),O("Skeletal Muscle","positive","nutrient uptake / anabolism"),O("Adipose Tissue","negative","fat storage"),O("Brain / CNS","caution","hypoglycemia risk")],
+  synergies:[S("pramlintide","mealtime co-therapy")],
+  clashes:[C("retatrutide","additive hypoglycemia — dangerous"),C("semaglutide","additive hypoglycemia — dangerous"),C("tirzepatide","additive hypoglycemia — dangerous"),C("metformin","additive hypoglycemia"),C("berberine","additive hypoglycemia")],
+  bloodMarkerImpact:["↓ glucose (hypo risk)","↑ weight"],foodDrug:[FD("Alcohol","unpredictable hypoglycemia")],dosingInfo:"Clinician-only; precise carb/dose matching. Hypoglycemia can be life-threatening.",cautions:["Severe hypoglycemia risk","Fat gain","Performance use is high-risk"],cofactor:"Glucose monitoring; never casually combine with other glucose-lowering agents.",refs:["Insulin clinical pharmacology"] },
+
+{ id:"tesofensine",name:"Tesofensine",category:"oral",route:"Oral (daily)",class:"Triple monoamine reuptake inhibitor",halfLife:"~8 days",bioavailability:"Oral",reversible:"yes",evidence:"B",
+  desc:"Serotonin–noradrenaline–dopamine reuptake inhibitor — strong appetite suppression & weight loss in trials; stimulant-type profile.",
+  targetOrgans:[O("Brain / CNS","positive","appetite suppression / focus"),O("Adipose Tissue","positive","weight loss"),O("Cardiovascular","caution","↑ HR/BP")],
+  synergies:[],clashes:[C("bupropion","additive monoamine / cardiac stimulation")],bloodMarkerImpact:["↓ weight","↑ HR/BP"],foodDrug:[FD("MAOIs","serotonergic/adrenergic crisis — avoid"),FD("Stimulants","additive cardiac load")],dosingInfo:"Oral daily; long half-life accumulates. Investigational/Rx.",cautions:["↑ HR/BP","Mood / sleep","Long half-life"],cofactor:null,refs:["Astrup 2008, Lancet"] },
+
+{ id:"adipotide",name:"Adipotide (FTPP)",category:"peptide",route:"SubQ",class:"Pro-apoptotic fat-vasculature peptide",halfLife:"Short",bioavailability:"Subcutaneous",reversible:"caution",evidence:"D",
+  desc:"Targets the blood supply of fat tissue to trigger fat-cell death — dramatic animal fat loss but dose-dependent kidney toxicity.",
+  targetOrgans:[O("Adipose Tissue","positive","fat-vasculature apoptosis"),O("Kidneys","negative","nephrotoxicity (primate trials)")],
+  synergies:[],clashes:[],bloodMarkerImpact:["↓ weight (animal)","↑ renal markers"],foodDrug:[],dosingInfo:"Education only — renal-toxicity signal halted enthusiasm.",cautions:["Kidney toxicity","No human data"],cofactor:"Renal monitoring — high-risk.",refs:["Barnhart 2011 (primate)"] },
+
+/* =============================== PEPTIDES — GUT / SKIN / IMMUNE / NEURO (added) =============================== */
+{ id:"teduglutide",name:"Teduglutide",category:"peptide",route:"SubQ (daily)",class:"GLP-2 analog (approved)",halfLife:"~2 h",bioavailability:"Subcutaneous",reversible:"yes",evidence:"A",
+  desc:"GLP-2 analog (Gattex) — grows intestinal mucosa & absorption; approved for short-bowel syndrome.",
+  targetOrgans:[O("Gut / GI","positive","intestinal mucosal growth / absorption"),O("Immune System","caution","trophic — neoplasia surveillance")],
+  synergies:[S("bpc-157","gut-mucosal healing")],clashes:[],bloodMarkerImpact:["nutrient absorption (clinical)"],foodDrug:[],dosingInfo:"Daily SubQ; colonoscopy surveillance. Prescriber-directed.",cautions:["Trophic — neoplasia surveillance","Fluid overload"],cofactor:null,refs:["Gattex FDA label"] },
+
+{ id:"larazotide",name:"Larazotide",category:"peptide",route:"Oral",class:"Tight-junction (zonulin) regulator",halfLife:"Gut-local",bioavailability:"Oral (gut-local)",reversible:"yes",evidence:"C",
+  desc:"Zonulin antagonist — tightens intestinal junctions ('leaky gut'); studied for celiac.",
+  targetOrgans:[O("Gut / GI","positive","barrier integrity"),O("Immune System","positive","reduced antigen leak")],
+  synergies:[S("kpv","gut anti-inflammatory"),S("bpc-157","gut healing")],clashes:[],bloodMarkerImpact:["gut permeability (research)"],foodDrug:[],dosingInfo:"Oral before meals. Education only.",cautions:["Phase-3 missed primary endpoint"],cofactor:null,refs:["Celiac trials (Alba/CeD)"] },
+
+{ id:"afamelanotide",name:"Afamelanotide",category:"peptide",route:"SubQ implant",class:"MC1R agonist (approved)",halfLife:"Implant (slow)",bioavailability:"Subcutaneous implant",reversible:"yes",evidence:"A",
+  desc:"α-MSH analog (Scenesse) — stimulates protective eumelanin; approved for erythropoietic protoporphyria.",
+  targetOrgans:[O("Skin / Connective","positive","photoprotective melanin"),O("Immune System","positive","photoprotection")],
+  synergies:[],clashes:[C("melanotan-2","redundant melanocortin — mole/melanoma stacking risk")],bloodMarkerImpact:["skin pigmentation"],foodDrug:[],dosingInfo:"Subdermal implant placed by a clinician.",cautions:["Pigmentation","Mole monitoring"],cofactor:null,refs:["Scenesse FDA approval"] },
+
+{ id:"setmelanotide",name:"Setmelanotide",category:"peptide",route:"SubQ (daily)",class:"MC4R agonist (approved)",halfLife:"~11 h",bioavailability:"Subcutaneous",reversible:"yes",evidence:"A",
+  desc:"Melanocortin-4 agonist (Imcivree) — approved for rare genetic obesity; restores satiety signaling.",
+  targetOrgans:[O("Brain / CNS","positive","satiety (MC4R)"),O("Adipose Tissue","positive","weight loss"),O("Skin / Connective","caution","hyperpigmentation"),O("Cardiovascular","caution","mild ↑BP")],
+  synergies:[],clashes:[],bloodMarkerImpact:["↓ weight","mild ↑BP"],foodDrug:[],dosingInfo:"Daily SubQ; genetic-indication specific. Prescriber-directed.",cautions:["Skin darkening","Injection-site reactions"],cofactor:null,refs:["Imcivree FDA approval"] },
+
+{ id:"humanin",name:"Humanin",category:"peptide",route:"SubQ",class:"Mitochondrial-derived peptide",halfLife:"Short",bioavailability:"Subcutaneous",reversible:"yes",evidence:"D",
+  desc:"Mitochondrial-derived peptide — cytoprotective, metabolic & neuroprotective signals (mostly preclinical).",
+  targetOrgans:[O("Mitochondria","positive","cytoprotection"),O("Brain / CNS","positive","neuroprotection"),O("Pancreas","positive","insulin sensitivity (animal)")],
+  synergies:[S("mots-c","mitochondrial-peptide pair"),S("nad-plus","mitochondrial support"),S("ss-31","mito protection")],clashes:[],bloodMarkerImpact:["research"],foodDrug:[],dosingInfo:"Education only — preclinical.",cautions:["Minimal human data"],cofactor:null,refs:["Lee 2013 (MDP biology)"] },
+
+{ id:"thymulin",name:"Thymulin",category:"peptide",route:"SubQ",class:"Zinc-dependent thymic peptide",halfLife:"Short",bioavailability:"Subcutaneous",reversible:"yes",evidence:"D",
+  desc:"Zinc-dependent thymic hormone — immune modulation plus anti-inflammatory/analgesic signals (preclinical).",
+  targetOrgans:[O("Immune System","positive","T-cell modulation"),O("Brain / CNS","positive","neuro-inflammation (animal)")],
+  synergies:[S("thymosin-a1","thymic immune support"),S("thymalin","thymic peptides"),S("zinc","zinc-dependent cofactor")],clashes:[],bloodMarkerImpact:["immune markers"],foodDrug:[],dosingInfo:"Education only.",cautions:["Weak human evidence"],cofactor:"Requires adequate zinc.",refs:["Thymulin literature"] },
+
+{ id:"cortexin",name:"Cortexin",category:"peptide",route:"IM (course)",class:"Cortical neuropeptide complex",halfLife:"Course-based",bioavailability:"IM",reversible:"yes",evidence:"D",
+  desc:"Russian cortical peptide complex — neuroprotective/cognitive claims; used clinically in CIS, minimal Western data.",
+  targetOrgans:[O("Brain / CNS","positive","neuroprotection (claimed)")],
+  synergies:[S("cerebrolysin","neurotrophic pair"),S("semax","cognitive support")],clashes:[],bloodMarkerImpact:["cognitive (clinical)"],foodDrug:[],dosingInfo:"IM in courses. Education only.",cautions:["Weak Western evidence"],cofactor:null,refs:["Russian clinical use"] },
+
+/* =============================== SUPPLEMENTS — PEPTIDE-SUPPORT (added) =============================== */
+{ id:"electrolytes",name:"Electrolytes (Na/K/Mg)",category:"supplement",route:"Oral",class:"Mineral salts",halfLife:"—",bioavailability:"Oral",reversible:"yes",evidence:"B",
+  desc:"Sodium / potassium / magnesium replacement — prevents cramps, dizziness & fatigue during fluid shifts (low-carb, GLP-1, fasting, heat).",
+  targetOrgans:[O("Cardiovascular","positive","rhythm / BP stability"),O("Skeletal Muscle","positive","cramp prevention"),O("Kidneys","caution","sodium load in salt-sensitive / HTN")],
+  synergies:[S("taurine","cramp / output support")],clashes:[],bloodMarkerImpact:["sodium / potassium balance"],foodDrug:[],dosingInfo:"Match to losses; mind sodium if hypertensive.",cautions:["Sodium load in hypertension","Potassium caution in renal impairment"],cofactor:null,refs:["Hydration / electrolyte literature"] },
+
+{ id:"eaa",name:"EAAs / Protein",category:"supplement",route:"Oral",class:"Essential amino acids",halfLife:"—",bioavailability:"Oral",reversible:"yes",evidence:"A",
+  desc:"Essential amino acids / adequate protein — the substrate for muscle protein synthesis; critical for preserving lean mass in a deficit.",
+  targetOrgans:[O("Skeletal Muscle","positive","muscle protein synthesis"),O("Skin / Connective","positive","tissue repair")],
+  synergies:[S("creatine","lean-mass support")],clashes:[],bloodMarkerImpact:["nitrogen balance"],foodDrug:[],dosingInfo:"~1.6–2.2 g protein/kg/day, or EAAs around training.",cautions:["Whole-protein generally preferable to isolated EAAs"],cofactor:null,refs:["Muscle protein-synthesis literature"] },
+
+{ id:"probiotic",name:"Probiotics",category:"supplement",route:"Oral",class:"Live beneficial microbes",halfLife:"—",bioavailability:"Oral (gut-local)",reversible:"yes",evidence:"B",
+  desc:"Strain-specific live cultures — support gut barrier, digestion & immune balance; useful around antibiotics or GI-irritating compounds.",
+  targetOrgans:[O("Gut / GI","positive","microbiome / barrier"),O("Immune System","positive","mucosal immunity")],
+  synergies:[S("psyllium","fiber feeds the microbiome (prebiotic)")],clashes:[],bloodMarkerImpact:["GI tolerance"],foodDrug:[FD("Antibiotics","separate dosing by a few hours")],dosingInfo:"Strain-specific; consistency matters. Education only.",cautions:["Strain quality varies","Caution if immunocompromised"],cofactor:null,refs:["Strain-specific RCTs"] }
 ];
+
+/* ---- cross-class support pairings: peptides recommend supportive supplements ---- */
+(function(){
+  const by = Object.fromEntries(window.COMPOUNDS.map(c => [c.id, c]));
+  const add = (id, sid, reason) => { const c = by[id]; if(c && by[sid] && !c.synergies.some(s=>s.id===sid)) c.synergies.push({ id:sid, reason }); };
+  ["retatrutide","semaglutide","tirzepatide","liraglutide","survodutide","mazdutide","cagrilintide"].forEach(id => {
+    add(id,"psyllium","soluble fiber eases GLP-1 constipation + adds satiety");
+    add(id,"magnesium","replaces electrolytes lost to GI fluid shifts");
+    add(id,"electrolytes","prevents cramps / dizziness from low intake");
+    add(id,"eaa","preserve lean mass during a calorie deficit");
+    add(id,"creatine","protects strength & lean mass during rapid loss");
+  });
+  add("tesamorelin","omega-3","amplifies visceral & liver-fat loss");
+  add("mk-677","berberine","offsets MK-677's glucose / insulin-resistance rise");
+  add("bpc-157","vitamin-c","collagen-synthesis cofactor for tendon/ligament repair");
+  add("bpc-157","collagen","substrate for connective-tissue repair");
+  add("tb-500","omega-3","anti-inflammatory recovery support");
+  add("ghk-cu","vitamin-c","cofactor for collagen synthesis");
+  add("semax","omega-3","DHA substrate for the BDNF/plasticity it drives");
+  add("selank","magnesium","complementary calm without sedation");
+  add("mots-c","urolithin-a","stacks mitochondrial biogenesis + mitophagy");
+  add("ss-31","coq10","complementary mitochondrial antioxidant");
+})();
