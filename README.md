@@ -20,6 +20,8 @@ A fully static, client-side tool to visualize how peptide / supplement / compoun
 Just **double-click `index.html`** — it works straight off the filesystem (`file://`), no server needed. (PubMed links open in a new tab.)
 
 ## Deploy (free)
+**Live:** https://s8nm.github.io/stacklab/
+
 - **GitHub Pages:** push this folder to a repo → Settings → Pages → deploy from branch (root). Done.
 - **Vercel / Netlify:** drag the folder onto the dashboard, or `vercel`/`netlify deploy`. It's a static site, no build step.
 
