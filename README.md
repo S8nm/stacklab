@@ -4,7 +4,7 @@ A fully static, client-side tool to visualize how peptide / supplement / compoun
 
 ## Features
 - **Live network graph** (vis-network): compounds → target organs, with synergy/clash edges drawn in real time (clash edges are tiered — critical = bold, redundant = faint).
-- **138-compound open database** across peptides, supplements, and oral/Rx — each with route, half-life, bioavailability, evidence grade, target-organ effects, dosing, blood-marker impact, cautions, cofactors, and named references.
+- **155-compound open database** across peptides, supplements, oral/Rx, anabolic steroids, SERMs & aromatase inhibitors — each with route, half-life, bioavailability, evidence grade, target-organ effects, dosing, blood-marker impact, cautions, cofactors, and named references.
 - **Weighted stack intelligence** (the Live Blueprint):
   - **Stack-balance summary** — a support↔stress meter, peak-loaded organ, critical-clash & not-reversible counts.
   - **Organ-load heatmap** — weighted bars (a negative hit and severe wording weigh more than a mild caution), so four hepatotoxic items read "Liver: HIGH", one mild item reads "LOW".
@@ -18,10 +18,12 @@ A fully static, client-side tool to visualize how peptide / supplement / compoun
 - **Food / drug interactions** — alcohol, grapefruit/CYP, caffeine, nitrates, anticoagulants, etc., surfaced both per-compound and as an aggregated **Food / Drug Watch** for the whole stack (danger-first).
 - **Research links** — each compound lists real named trials/sources and an auto-generated **PubMed search** link (no fabricated DOIs).
 - **Goal presets** — Longevity, General Health, Cognitive, Fat Loss, Muscle, Hormonal.
+- **Blends** — one-click bundles (GLOW, KLOW, BPC+TB, CJC+Ipamorelin, CagriSema, lipotropic, Relaxation PM) that add every component compound at once.
+- **Smart search aliases** — find a compound by brand name or ester: Ozempic/Wegovy → Semaglutide, Mounjaro → Tirzepatide, Sustanon/Test E/Cyp/Prop → Testosterone, Deca/NPP → Nandrolone, Tren A/E → Trenbolone, Melanotan 1 → Afamelanotide, Cialis, Clomid, Arimidex…
 
 ## Files
 - `index.html` — the whole app (HTML + Tailwind via CDN + vanilla JS + vis-network graph).
-- `compoundsData.js` — the editable, crowdsource-friendly compound database (138 entries).
+- `compoundsData.js` — the editable, crowdsource-friendly compound database (155 entries).
 
 ## Run locally
 Just **double-click `index.html`** — it works straight off the filesystem (`file://`), no server needed. (PubMed links open in a new tab.)

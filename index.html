@@ -142,6 +142,8 @@
       <div class="p-4 border-b border-line">
         <p class="disp text-[12px] tracking-[.18em] text-muted">01 · GOAL PRESETS</p>
         <div id="presets" class="mt-3 flex flex-wrap gap-1.5"></div>
+        <p class="disp text-[12px] tracking-[.18em] text-muted mt-4">＋ BLENDS <span class="text-muted/50 normal-case">· adds all parts</span></p>
+        <div id="blends" class="mt-3 flex flex-wrap gap-1.5"></div>
       </div>
 
       <div class="px-4 pt-4">
@@ -302,7 +304,7 @@
     glucose:{ retatrutide:-3,tirzepatide:-3,semaglutide:-3,liraglutide:-2,survodutide:-2,mazdutide:-2,cagrilintide:-1,pramlintide:-1,
               metformin:-2,berberine:-2,acarbose:-2,empagliflozin:-2,"myo-inositol":-1,"alpha-lipoic-acid":-1,"mots-c":-1,chromium:-0.5,taurine:-0.5,"5-amino-1mq":-0.5,"igf1-lr3":-2,insulin:-4,
               "mk-677":2,hgh:2,tesamorelin:1,"cjc-1295":0.5,sermorelin:0.5,niacin:1,clenbuterol:0.5,"t3-liothyronine":0.5,oxandrolone:0.5,trenbolone:0.5,rapamycin:0.5 },
-    cardiac:{ caffeine:1,nicotine:1.5,modafinil:1,bupropion:1,retatrutide:1,tirzepatide:0.5,semaglutide:0.5,clenbuterol:3,"t3-liothyronine":2,trenbolone:1.5,"mk-677":0.5,hexarelin:1,"pt-141":1,"melanotan-2":0.5,hgh:0.5,setmelanotide:0.5,"ghrp-2":0.5,tesofensine:1,
+    cardiac:{ caffeine:1,nicotine:1.5,modafinil:1,bupropion:1,retatrutide:1,tirzepatide:0.5,semaglutide:0.5,clenbuterol:3,"t3-liothyronine":2,trenbolone:1.5,oxymetholone:0.5,methandienone:0.5,boldenone:0.5,testosterone:0.5,"mk-677":0.5,hexarelin:1,"pt-141":1,"melanotan-2":0.5,hgh:0.5,setmelanotide:0.5,"ghrp-2":0.5,tesofensine:1,
               taurine:-1,magnesium:-0.5,"omega-3":-0.5,tadalafil:-1.5,sildenafil:-1.5,vip:-1.5,"l-theanine":-0.5,ashwagandha:-0.5,coq10:-0.5,empagliflozin:-0.5,berberine:-0.25,"tart-cherry":-0.25,bergamot:-0.25 },
     sedation:{ melatonin:1.5,ashwagandha:1.5,dsip:1.5,apigenin:0.75,glycine:0.5,"l-theanine":0.5,magnesium:0.5,"tart-cherry":0.5,selank:0.5,sertraline:0.5,taurine:0.25,"low-dose-naltrexone":0.25 },
     stim:{ modafinil:2,tesofensine:2,caffeine:1.5,nicotine:1.5,bupropion:1.5,semax:1,"l-tyrosine":1,rhodiola:1,"alpha-gpc":0.25,citicoline:0.25 },
@@ -366,6 +368,19 @@
     render();
   }
 
+  /* ---------------- BLENDS (one click adds every component) ---------------- */
+  const elBlends = $("#blends");
+  (window.BLENDS || []).forEach(b => {
+    const valid = (b.components || []).filter(id => byId[id]);
+    if(!valid.length) return;
+    const el = document.createElement("button");
+    el.className = "preset pill rounded-lg px-2.5 py-1.5 mono text-[11px] text-muted";
+    el.title = b.desc + " — adds: " + valid.map(id => byId[id].name).join(", ");
+    el.innerHTML = `<span class="mr-1 text-violet">◈</span>${b.name}`;
+    el.onclick = () => { valid.forEach(id => state.active.add(id)); state.preset = null; render(); };
+    elBlends.appendChild(el);
+  });
+
   /* ---------------- TABS ---------------- */
   Object.entries(CAT).forEach(([key,c], i) => {
     const t = document.createElement("button");
@@ -418,7 +433,7 @@
       if(state.rev && c.reversible !== "yes") return false;
       if(state.ev !== "all" && (EVR[c.evidence]||0) < EV_FLOOR[state.ev]) return false;
       return state.q
-        ? (c.name.toLowerCase().includes(state.q) || c.class.toLowerCase().includes(state.q))
+        ? (c.name.toLowerCase().includes(state.q) || c.class.toLowerCase().includes(state.q) || (c.aliases||[]).some(a => a.includes(state.q)))
         : c.category === state.tab;
     });
     elList.innerHTML = "";

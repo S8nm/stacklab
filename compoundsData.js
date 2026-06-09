@@ -28,6 +28,17 @@ window.GOAL_PRESETS = {
   hormonal:{ label:"Hormonal / T-Optimization", icon:"♂", ids:["enclomiphene","tongkat-ali","boron","zinc","vitamin-d3","hcg"] }
 };
 
+/* Vendor-style blends — one click adds every component compound. */
+window.BLENDS = [
+  { id:"bpc-tb",    name:"BPC + TB (Healing Duo)",       components:["bpc-157","tb-500"],                     desc:"Soft-tissue & gut recovery pairing." },
+  { id:"cjc-ipa",   name:"CJC-1295 + Ipamorelin",        components:["cjc-1295","ipamorelin"],               desc:"GHRH + GHRP — amplified GH pulse." },
+  { id:"glow",      name:"GLOW (BPC+GHK-Cu+TB)",         components:["bpc-157","ghk-cu","tb-500"],           desc:"Skin/connective + systemic recovery blend." },
+  { id:"klow",      name:"KLOW (GLOW + KPV)",            components:["bpc-157","ghk-cu","tb-500","kpv"],     desc:"GLOW plus gut/anti-inflammatory KPV." },
+  { id:"cagrisema", name:"CagriSema (Cagri + Sema)",     components:["cagrilintide","semaglutide"],          desc:"Amylin + GLP-1 — stronger appetite suppression." },
+  { id:"lipo",      name:"Lipo-B / Lipo-C (lipotropic)", components:["l-carnitine","myo-inositol","vitamin-b12"], desc:"Lipotropic fat-metabolism support (carnitine + inositol + B12 family)." },
+  { id:"relax-pm",  name:"Relaxation PM",                components:["glycine","magnesium","l-theanine","melatonin"], desc:"Evening calm + sleep-onset stack." }
+];
+
 /* tiny helpers to keep entries compact */
 function O(organ,effect,note){return{organ,effect,note};}
 function S(id,reason){return{id,reason};}
@@ -696,7 +707,103 @@ window.COMPOUNDS = [
 { id:"probiotic",name:"Probiotics",category:"supplement",route:"Oral",class:"Live beneficial microbes",halfLife:"—",bioavailability:"Oral (gut-local)",reversible:"yes",evidence:"B",
   desc:"Strain-specific live cultures — support gut barrier, digestion & immune balance; useful around antibiotics or GI-irritating compounds.",
   targetOrgans:[O("Gut / GI","positive","microbiome / barrier"),O("Immune System","positive","mucosal immunity")],
-  synergies:[S("psyllium","fiber feeds the microbiome (prebiotic)")],clashes:[],bloodMarkerImpact:["GI tolerance"],foodDrug:[FD("Antibiotics","separate dosing by a few hours")],dosingInfo:"Strain-specific; consistency matters. Education only.",cautions:["Strain quality varies","Caution if immunocompromised"],cofactor:null,refs:["Strain-specific RCTs"] }
+  synergies:[S("psyllium","fiber feeds the microbiome (prebiotic)")],clashes:[],bloodMarkerImpact:["GI tolerance"],foodDrug:[FD("Antibiotics","separate dosing by a few hours")],dosingInfo:"Strain-specific; consistency matters. Education only.",cautions:["Strain quality varies","Caution if immunocompromised"],cofactor:null,refs:["Strain-specific RCTs"] },
+
+/* =============================== PEPTIDES — GROWTH-FACTOR / MISC (added) =============================== */
+{ id:"igf-1",name:"IGF-1 (Mecasermin)",category:"peptide",route:"SubQ",class:"Insulin-like growth factor-1",halfLife:"~5–6 h",bioavailability:"Subcutaneous",reversible:"caution",evidence:"B",
+  desc:"Recombinant native IGF-1 — drives growth & anabolism downstream of GH; approved for severe IGF-1 deficiency. Hypoglycemia + proliferative concerns.",
+  targetOrgans:[O("Skeletal Muscle","positive","hypertrophy / anabolism"),O("Pancreas","negative","hypoglycemia"),O("Liver","caution","proliferation"),O("Gut / GI","caution","organ growth")],
+  synergies:[],clashes:[C("igf1-lr3","redundant IGF signaling"),C("hgh","additive IGF-1 load")],
+  bloodMarkerImpact:["↑ IGF-1","↓ glucose (hypo risk)"],foodDrug:[FD("Insulin","additive hypoglycemia")],dosingInfo:"SubQ with food to offset hypoglycemia. Clinician-directed.",cautions:["Hypoglycemia","Proliferation / cancer caution","Intracranial hypertension"],cofactor:"Take with food; monitor glucose + IGF-1.",refs:["Increlex (mecasermin) FDA label"] },
+
+{ id:"igf-des",name:"IGF-1 DES",category:"peptide",route:"SubQ",class:"Truncated IGF-1 variant",halfLife:"~20–30 min",bioavailability:"Subcutaneous",reversible:"no",evidence:"D",
+  desc:"Short ultra-potent IGF-1 fragment favored for localized muscle effect; IGF / proliferation risks, no human trials.",
+  targetOrgans:[O("Skeletal Muscle","positive","local hypertrophy / hyperplasia"),O("Pancreas","negative","hypoglycemia"),O("Liver","caution","proliferation")],
+  synergies:[],clashes:[C("igf1-lr3","redundant IGF signaling"),C("igf-1","redundant IGF signaling")],
+  bloodMarkerImpact:["↓ glucose"],foodDrug:[],dosingInfo:"Education only — research peptide.",cautions:["Hypoglycemia","Proliferation / cancer caution (irreversible)","No human data"],cofactor:null,refs:["IGF-1 DES mechanistic literature"] },
+
+{ id:"snap-8",name:"SNAP-8 (Acetyl Octapeptide-3)",category:"peptide",route:"Topical",class:"Cosmetic neuro-peptide (SNARE)",halfLife:"Topical",bioavailability:"Topical",reversible:"yes",evidence:"D",
+  desc:"Topical 'Botox-in-a-jar' peptide — claims to soften expression lines by interfering with SNARE-mediated muscle contraction; weak penetration/evidence.",
+  targetOrgans:[O("Skin / Connective","positive","expression-line softening (claimed)")],
+  synergies:[S("ghk-cu","topical skin pairing")],clashes:[],bloodMarkerImpact:["none directly"],foodDrug:[],dosingInfo:"Topical serum. Education only.",cautions:["Weak transdermal penetration","Cosmetic claims"],cofactor:null,refs:["Cosmetic peptide literature"] },
+
+{ id:"botulinum-toxin",name:"Botulinum Toxin (Botox)",category:"peptide",route:"Intramuscular / intradermal",class:"Neuromuscular toxin (SNAP-25 cleavage)",halfLife:"Effect 3–4 months",bioavailability:"Local injection",reversible:"yes",evidence:"A",
+  desc:"Blocks acetylcholine release at the neuromuscular junction — temporarily relaxes muscles (wrinkles, hyperhidrosis, migraine, bruxism). Wears off fully.",
+  targetOrgans:[O("Skin / Connective","positive","wrinkle relaxation"),O("Skeletal Muscle","caution","local paralysis (intended)"),O("Brain / CNS","positive","chronic migraine")],
+  synergies:[],clashes:[],bloodMarkerImpact:["none systemic"],foodDrug:[FD("Aminoglycoside antibiotics","potentiate neuromuscular blockade")],dosingInfo:"Injected by a trained clinician; effect reverses in ~3–4 months.",cautions:["Ptosis / asymmetry if misplaced","Rare toxin spread","Injector skill critical"],cofactor:null,refs:["Botox FDA labels"] },
+
+{ id:"glutathione",name:"Glutathione",category:"supplement",route:"Oral / IV / IM",class:"Master antioxidant tripeptide",halfLife:"Short (IV)",bioavailability:"Oral (low) / IV",reversible:"yes",evidence:"C",
+  desc:"The body's main intracellular antioxidant — detox, immune & skin-brightening claims; oral is poorly absorbed (NAC + glycine raise it more reliably).",
+  targetOrgans:[O("Liver","positive","detox / antioxidant"),O("Immune System","positive","redox balance"),O("Skin / Connective","positive","brightening (claimed)")],
+  synergies:[S("nac","NAC is the rate-limiting precursor"),S("glycine","glutathione substrate"),S("vitamin-c","recycles glutathione")],clashes:[],
+  bloodMarkerImpact:["↑ glutathione"],foodDrug:[],dosingInfo:"IV/IM bypasses poor oral absorption; or raise endogenously with NAC + glycine.",cautions:["Oral bioavailability low","IV sterility/quality matters"],cofactor:"NAC + glycine raise glutathione more reliably.",refs:["Glutathione / GlyNAC literature"] },
+
+/* =============================== GONADOTROPIN (added) =============================== */
+{ id:"hmg",name:"HMG (Menotropin)",category:"oral",route:"SubQ / IM",class:"Gonadotropin (FSH + LH)",halfLife:"FSH ~1 day",bioavailability:"SubQ/IM",reversible:"yes",evidence:"A",
+  desc:"Human menopausal gonadotropin — supplies FSH (and LH) to drive spermatogenesis & fertility; used with hCG in fertility restoration.",
+  targetOrgans:[O("Endocrine","positive","FSH/LH → gametogenesis"),O("Prostate / Repro","positive","fertility / spermatogenesis")],
+  synergies:[S("hcg","hCG (LH) + HMG (FSH) restore fertility"),S("enclomiphene","HPTA support")],clashes:[C("testosterone","TRT suppresses the axis HMG drives")],
+  bloodMarkerImpact:["↑ FSH/LH","↑ testosterone","sperm parameters"],foodDrug:[],dosingInfo:"SubQ/IM fertility protocols with hCG. Prescriber-directed.",cautions:["Cost","Injection burden","OHSS (in women)"],cofactor:null,refs:["Menotropin clinical use"] },
+
+/* =============================== ANABOLIC-ANDROGENIC STEROIDS (added) =============================== */
+{ id:"oxymetholone",name:"Oxymetholone (Anadrol)",category:"oral",route:"Oral (17-aa)",class:"Oral anabolic-androgenic steroid",halfLife:"~8–9 h",bioavailability:"Oral (17-aa)",reversible:"no",evidence:"A",
+  desc:"Very potent oral mass/strength builder — huge size/strength but harsh on liver, lipids & estrogenic side effects.",
+  targetOrgans:[O("Skeletal Muscle","positive","rapid mass / strength"),O("Liver","negative","hepatotoxic (17-aa)"),O("Cardiovascular","negative","↓ HDL, ↑ BP / water"),O("Endocrine","negative","HPTA shutdown; estrogenic")],
+  synergies:[S("tamoxifen","manage estrogenic gyno"),S("tudca","liver support on-cycle")],clashes:[],bloodMarkerImpact:["↓ HDL","↑ ALT/AST","↓ LH/T"],foodDrug:[FD("Alcohol","compounded liver stress")],dosingInfo:"Education only — clinician/lab territory.",cautions:["Hepatotoxic","HPTA shutdown","Water retention / BP","Not reversible-friendly"],cofactor:"Liver / lipid / hormone monitoring + recovery plan.",refs:["AAS literature"] },
+
+{ id:"methandienone",name:"Methandienone (Dianabol)",category:"oral",route:"Oral (17-aa)",class:"Oral anabolic-androgenic steroid",halfLife:"~3–5 h",bioavailability:"Oral (17-aa)",reversible:"no",evidence:"A",
+  desc:"Classic oral bulking steroid — fast strength/size with water retention; aromatizes, hepatotoxic, tanks lipids.",
+  targetOrgans:[O("Skeletal Muscle","positive","mass / strength"),O("Liver","negative","hepatotoxic (17-aa)"),O("Cardiovascular","negative","↓ HDL, ↑ BP"),O("Endocrine","negative","HPTA shutdown; aromatization")],
+  synergies:[S("anastrozole","control aromatization / estrogen"),S("tudca","liver support on-cycle")],clashes:[],bloodMarkerImpact:["↓ HDL","↑ ALT/AST","↑ estradiol","↓ LH/T"],foodDrug:[FD("Alcohol","compounded liver stress")],dosingInfo:"Education only — clinician/lab territory.",cautions:["Hepatotoxic","Estrogenic (gyno / water)","HPTA shutdown"],cofactor:"AI + liver / lipid monitoring.",refs:["AAS literature"] },
+
+{ id:"methyldrostanolone",name:"Methyldrostanolone (Superdrol)",category:"oral",route:"Oral (17-aa)",class:"Oral anabolic-androgenic steroid",halfLife:"~8 h",bioavailability:"Oral (17-aa)",reversible:"no",evidence:"C",
+  desc:"Extremely potent non-aromatizing oral — dry strength/hardness, but among the most hepatotoxic and lipid-crushing orals.",
+  targetOrgans:[O("Skeletal Muscle","positive","dry strength / hardness"),O("Liver","negative","severe hepatotoxicity"),O("Cardiovascular","negative","crushes HDL, ↑ BP"),O("Endocrine","negative","HPTA shutdown")],
+  synergies:[S("tudca","liver support on-cycle")],clashes:[],bloodMarkerImpact:["↓↓ HDL","↑↑ ALT/AST","↓ LH/T"],foodDrug:[FD("Alcohol","dangerous additive liver stress")],dosingInfo:"Education only — high-risk, clinician/lab territory.",cautions:["Severe hepatotoxicity","Lethargy","Tanks lipids","HPTA shutdown"],cofactor:"Strict liver / lipid monitoring.",refs:["AAS literature"] },
+
+{ id:"turinabol",name:"Turinabol (4-Chlorodehydromethyltest.)",category:"oral",route:"Oral (17-aa)",class:"Oral anabolic-androgenic steroid",halfLife:"~16 h",bioavailability:"Oral (17-aa)",reversible:"no",evidence:"C",
+  desc:"'Clean' lean-gain oral — no aromatization/water, moderate strength; still hepatotoxic, lipid-negative & suppressive.",
+  targetOrgans:[O("Skeletal Muscle","positive","lean strength"),O("Liver","negative","hepatotoxic (17-aa)"),O("Cardiovascular","negative","↓ HDL"),O("Endocrine","negative","HPTA shutdown")],
+  synergies:[S("tudca","liver support on-cycle")],clashes:[],bloodMarkerImpact:["↓ HDL","↑ ALT/AST","↓ LH/T"],foodDrug:[FD("Alcohol","compounded liver stress")],dosingInfo:"Education only — clinician/lab territory.",cautions:["Hepatotoxic","HPTA shutdown","Long detection window"],cofactor:"Liver / lipid monitoring.",refs:["AAS literature"] },
+
+{ id:"boldenone",name:"Boldenone (Equipoise)",category:"oral",route:"IM (oil)",class:"Injectable anabolic-androgenic steroid",halfLife:"Ester (long)",bioavailability:"Injectable",reversible:"no",evidence:"C",
+  desc:"Slow-acting injectable for steady lean gains & appetite; mild aromatization, raises red cells (hematocrit / BP).",
+  targetOrgans:[O("Skeletal Muscle","positive","steady lean gains"),O("Cardiovascular","negative","↑ hematocrit / BP, ↓ HDL"),O("Endocrine","negative","HPTA shutdown; aromatization")],
+  synergies:[S("anastrozole","control aromatization")],clashes:[],bloodMarkerImpact:["↑ hematocrit","↓ HDL","↑ estradiol (mild)","↓ LH/T"],foodDrug:[],dosingInfo:"Education only — clinician/lab territory.",cautions:["Polycythemia (donate / monitor)","HPTA shutdown","Long ester"],cofactor:"Monitor hematocrit + lipids.",refs:["AAS literature"] },
+
+{ id:"drostanolone",name:"Drostanolone (Masteron)",category:"oral",route:"IM (oil)",class:"Injectable AAS (DHT-derived)",halfLife:"Ester-dependent",bioavailability:"Injectable",reversible:"no",evidence:"C",
+  desc:"DHT-derived 'hardening / dry-look' injectable with mild anti-estrogen action; cosmetic when already lean. Lipid-negative, suppressive, androgenic.",
+  targetOrgans:[O("Skeletal Muscle","positive","hardness / dry look"),O("Cardiovascular","negative","↓ HDL"),O("Skin / Connective","caution","hair loss / acne (androgenic)"),O("Endocrine","negative","HPTA shutdown")],
+  synergies:[],clashes:[],bloodMarkerImpact:["↓ HDL","↓ LH/T","↓ estradiol (mild)"],foodDrug:[],dosingInfo:"Education only — clinician/lab territory.",cautions:["Androgenic hair loss / acne","HPTA shutdown","Only 'works' when lean"],cofactor:null,refs:["AAS literature"] },
+
+{ id:"methenolone",name:"Methenolone (Primobolan)",category:"oral",route:"IM (oil) / oral",class:"Anabolic-androgenic steroid (DHT)",halfLife:"Ester-dependent",bioavailability:"Injectable / oral",reversible:"no",evidence:"C",
+  desc:"Mild, non-aromatizing 'lean / quality' steroid with a gentle reputation — but still suppressive and lipid-negative; oral form is non-17aa but weak.",
+  targetOrgans:[O("Skeletal Muscle","positive","lean quality gains"),O("Cardiovascular","negative","↓ HDL"),O("Endocrine","negative","HPTA shutdown")],
+  synergies:[],clashes:[],bloodMarkerImpact:["↓ HDL","↓ LH/T"],foodDrug:[],dosingInfo:"Education only — clinician/lab territory.",cautions:["HPTA shutdown","Expensive / often faked","Mild but not side-effect-free"],cofactor:null,refs:["AAS literature"] },
+
+{ id:"mesterolone",name:"Mesterolone (Proviron)",category:"oral",route:"Oral",class:"Oral DHT-derivative androgen",halfLife:"~12 h",bioavailability:"Oral (non-17aa)",reversible:"caution",evidence:"B",
+  desc:"Oral DHT androgen used to free up testosterone (lowers SHBG) and add 'hardness' / libido; not liver-toxic, weakly anabolic, suppressive at higher doses.",
+  targetOrgans:[O("Endocrine","caution","↓ SHBG (↑ free T); HPTA suppression at dose"),O("Prostate / Repro","positive","libido"),O("Skin / Connective","caution","androgenic hair loss / acne")],
+  synergies:[S("boron","free-testosterone support")],clashes:[],bloodMarkerImpact:["↑ free testosterone","↓ SHBG"],foodDrug:[],dosingInfo:"Education only — clinician/lab territory.",cautions:["Androgenic (hair / prostate)","Suppressive at higher doses"],cofactor:null,refs:["Mesterolone literature"] },
+
+/* =============================== SERMs / AROMATASE INHIBITORS (added) =============================== */
+{ id:"clomiphene",name:"Clomiphene (Clomid)",category:"oral",route:"Oral (Rx)",class:"SERM (HPTA stimulant)",halfLife:"~5–7 days",bioavailability:"Oral",reversible:"yes",evidence:"A",
+  desc:"Mixed-isomer SERM — raises LH/FSH → testosterone and restores fertility (PCT); enclomiphene is its cleaner trans-isomer with fewer mood/visual effects.",
+  targetOrgans:[O("Endocrine","positive","↑ LH/FSH → testosterone"),O("Prostate / Repro","positive","fertility / PCT"),O("Brain / CNS","caution","mood / visual disturbance (estrogenic isomer)")],
+  synergies:[S("hcg","kick-start + restart for PCT"),S("tamoxifen","combined PCT"),S("hmg","fertility support")],clashes:[C("enclomiphene","redundant SERM / HPTA stimulus"),C("testosterone","TRT suppresses the axis clomiphene stimulates")],
+  bloodMarkerImpact:["↑ LH/FSH","↑ testosterone","↑ estradiol"],foodDrug:[],dosingInfo:"Oral; PCT / secondary-hypogonadism use. Prescriber-directed.",cautions:["Mood / visual effects (zuclomiphene)","Estradiol rise"],cofactor:null,refs:["Clomiphene PCT / hypogonadism literature"] },
+
+{ id:"tamoxifen",name:"Tamoxifen (Nolvadex)",category:"oral",route:"Oral (Rx)",class:"SERM (anti-estrogen breast / PCT)",halfLife:"~5–7 days",bioavailability:"Oral",reversible:"yes",evidence:"A",
+  desc:"SERM that blocks estrogen at breast tissue (treats/prevents gyno) and restarts the HPTA in PCT by raising LH/FSH.",
+  targetOrgans:[O("Endocrine","positive","↑ LH/FSH → testosterone"),O("Skin / Connective","positive","blocks gyno (breast estrogen)"),O("Cardiovascular","positive","improves lipids"),O("Liver","caution","clot risk; rare hepatic effects")],
+  synergies:[S("clomiphene","combined PCT"),S("hcg","PCT restart")],clashes:[C("anastrozole","tamoxifen lowers anastrozole levels — interaction")],
+  bloodMarkerImpact:["↑ LH/FSH / testosterone","↑ SHBG","↓ IGF-1 (mild)"],foodDrug:[FD("Strong CYP2D6 inhibitors","reduce active metabolite (endoxifen)")],dosingInfo:"Oral; gyno management + PCT. Prescriber-directed.",cautions:["Clot risk (VTE)","Mood","CYP2D6 interactions"],cofactor:null,refs:["Tamoxifen labels; PCT literature"] },
+
+{ id:"exemestane",name:"Exemestane (Aromasin)",category:"oral",route:"Oral (Rx)",class:"Steroidal aromatase inhibitor (suicide)",halfLife:"~24 h",bioavailability:"Oral",reversible:"yes",evidence:"A",
+  desc:"Steroidal 'suicide' aromatase inhibitor — permanently binds each aromatase enzyme to lower estradiol, with less rebound than non-steroidal AIs; the effect reverses as enzyme regenerates.",
+  targetOrgans:[O("Endocrine","caution","↓ estradiol (over-suppression risk)"),O("Bone","negative","low E2 harms bone density"),O("Cardiovascular","caution","low E2 worsens lipids")],
+  synergies:[S("testosterone","manage aromatization on TRT/AAS"),S("methandienone","control aromatizing-AAS estrogen")],clashes:[C("anastrozole","redundant aromatase inhibition — estrogen-crash risk")],
+  bloodMarkerImpact:["↓ estradiol","↓ HDL (if over-suppressed)","↓ bone density (chronic)"],foodDrug:[FD("Food","take after a meal — improves absorption")],dosingInfo:"Micro-dosed if used with aromatizing compounds. Prescriber-directed.",cautions:["Crashing E2 harms libido / joints / bone / lipids","Use sparingly"],cofactor:"Don't over-suppress estradiol.",refs:["Exemestane oncology + AAS-management literature"] }
 ];
 
 /* ---- cross-class support pairings: peptides recommend supportive supplements ---- */
@@ -720,4 +827,40 @@ window.COMPOUNDS = [
   add("selank","magnesium","complementary calm without sedation");
   add("mots-c","urolithin-a","stacks mitochondrial biogenesis + mitophagy");
   add("ss-31","coq10","complementary mitochondrial antioxidant");
+})();
+
+/* ---- search aliases: brand names, ester variants, MT-1 (so "Test E", "Deca", "Ozempic" resolve) ---- */
+(function(){
+  const by = Object.fromEntries(window.COMPOUNDS.map(c => [c.id, c]));
+  const A = {
+    testosterone:["test","test e","test c","test p","testosterone enanthate","testosterone cypionate","testosterone propionate","sustanon","sus 250","trt"],
+    nandrolone:["deca","deca durabolin","npp","nandrolone decanoate","nandrolone phenylpropionate","durabolin"],
+    trenbolone:["tren","tren a","tren e","trenbolone acetate","trenbolone enanthate","parabolan"],
+    afamelanotide:["melanotan 1","melanotan-1","mt-1","mt1","scenesse"],
+    "melanotan-2":["mt-2","mt2"],
+    semaglutide:["ozempic","wegovy","rybelsus"],
+    tirzepatide:["mounjaro","zepbound"],
+    retatrutide:["reta"],
+    oxandrolone:["anavar","var"],
+    stanozolol:["winstrol","winny"],
+    methandienone:["dianabol","dbol"],
+    oxymetholone:["anadrol","drol"],
+    methenolone:["primobolan","primo"],
+    drostanolone:["masteron","mast"],
+    boldenone:["equipoise","eq"],
+    mesterolone:["proviron"],
+    methyldrostanolone:["superdrol","sdrol"],
+    tadalafil:["cialis"],
+    sildenafil:["viagra"],
+    clomiphene:["clomid"],
+    tamoxifen:["nolvadex","nolva"],
+    anastrozole:["arimidex","adex"],
+    exemestane:["aromasin"],
+    "t3-liothyronine":["cytomel"],
+    hgh:["somatropin","growth hormone","gh"],
+    hcg:["pregnyl","gonadotropin"],
+    clenbuterol:["clen"],
+    turinabol:["tbol","oral turinabol"]
+  };
+  Object.entries(A).forEach(([id, al]) => { if(by[id]) by[id].aliases = al; });
 })();
