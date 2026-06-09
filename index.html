@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STACKLAB — Interactive Compound Stack Visualizer</title>
+<meta name="description" content="Open, client-side tool to visualize how peptide / supplement / compound stacks connect to target organs — synergies, clashes, and organ-stress in real time. Education only." />
+
+<!-- Tailwind (CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- vis-network (CDN) -->
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: "#060b0c", panel: "#0b1315", panel2: "#0f1c1f", line: "#17282c",
+          brand: "#2dd4bf", mint: "#34d399", rose: "#fb7185", amber: "#fbbf24",
+          sky: "#38bdf8", violet: "#a78bfa", txt: "#dfeaec", muted: "#6f8a8f"
+        },
+        fontFamily: {
+          display: ['"Chakra Petch"', "sans-serif"],
+          mono: ['"IBM Plex Mono"', "monospace"],
+          sans: ['"IBM Plex Sans"', "sans-serif"]
+        }
+      }
+    }
+  };
+</script>
+
+<style>
+  :root{
+    --brand:#2dd4bf; --mint:#34d399; --rose:#fb7185; --amber:#fbbf24;
+    --sky:#38bdf8; --violet:#a78bfa; --line:#17282c;
+  }
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1100px 620px at 82% -8%, rgba(45,212,191,.10), transparent 60%),
+      radial-gradient(900px 600px at 8% 108%, rgba(167,139,250,.08), transparent 60%),
+      #060b0c;
+    color:#dfeaec; font-family:"IBM Plex Sans",sans-serif;
+  }
+  /* faint lab grid */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:
+      linear-gradient(rgba(45,212,191,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45,212,191,.045) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(circle at 50% 38%, #000 30%, transparent 86%);
+            mask-image:radial-gradient(circle at 50% 38%, #000 30%, transparent 86%);
+  }
+  .wrap{position:relative; z-index:1;}
+  .mono{font-family:"IBM Plex Mono",monospace;}
+  .disp{font-family:"Chakra Petch",sans-serif; letter-spacing:.02em;}
+
+  .glass{background:rgba(12,21,23,.72); backdrop-filter:blur(8px); border:1px solid var(--line);}
+  .glow{box-shadow:0 0 0 1px rgba(45,212,191,.05), 0 18px 50px -28px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.02);}
+
+  /* tab underline */
+  .tab{position:relative; transition:color .18s;}
+  .tab[data-on="1"]{color:#dfeaec;}
+  .tab[data-on="1"]::after{content:""; position:absolute; left:8px; right:8px; bottom:-1px; height:2px; background:linear-gradient(90deg,var(--brand),var(--sky)); border-radius:2px;}
+
+  /* compound card */
+  .card{transition:transform .14s ease, border-color .18s, background .18s;}
+  .card:hover{transform:translateY(-1px); border-color:rgba(45,212,191,.35);}
+  .card[data-on="1"]{background:linear-gradient(180deg, rgba(45,212,191,.10), rgba(45,212,191,.03)); border-color:rgba(45,212,191,.55); box-shadow:0 0 0 1px rgba(45,212,191,.18), 0 0 26px -8px rgba(45,212,191,.5);}
+
+  .pill{border:1px solid var(--line); transition:all .16s;}
+  .preset:hover{border-color:rgba(56,189,248,.5); color:#cdeef9;}
+  .preset[data-on="1"]{background:linear-gradient(180deg, rgba(56,189,248,.16), rgba(56,189,248,.04)); border-color:rgba(56,189,248,.6); color:#d7f1fb;}
+
+  /* scrollbars */
+  .scroll::-webkit-scrollbar{width:9px;height:9px;}
+  .scroll::-webkit-scrollbar-thumb{background:#1c3034; border-radius:9px; border:2px solid transparent; background-clip:padding-box;}
+  .scroll::-webkit-scrollbar-thumb:hover{background:#234047;}
+  .scroll::-webkit-scrollbar-track{background:transparent;}
+
+  /* entrance */
+  @keyframes rise{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
+  .rise{animation:rise .6s cubic-bezier(.2,.7,.2,1) both;}
+
+  @keyframes pulseWarn{0%,100%{box-shadow:0 0 0 0 rgba(251,113,133,.0);}50%{box-shadow:0 0 0 4px rgba(251,113,133,.08);}}
+  .warnpulse{animation:pulseWarn 2.6s ease-in-out infinite;}
+
+  @keyframes scan{0%{transform:translateY(-100%);}100%{transform:translateY(2200%);}}
+  .scanline{position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,rgba(45,212,191,.5),transparent); animation:scan 7s linear infinite; opacity:.5;}
+
+  /* modal */
+  .drawer{transition:transform .34s cubic-bezier(.2,.8,.2,1);}
+  .drawer.closed{transform:translateX(105%);}
+  .backdrop{transition:opacity .3s;}
+
+  #net{width:100%; height:100%;}
+  .empty-net{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; pointer-events:none;}
+  .ticker b{color:#bdeee6;}
+</style>
+</head>
+
+<body class="antialiased">
+<div class="wrap min-h-screen flex flex-col">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="rise sticky top-0 z-30 glass border-b border-line/80">
+    <div class="max-w-[1500px] mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="relative h-10 w-10 grid place-items-center rounded-xl border border-brand/40 bg-brand/10 shrink-0">
+          <span class="disp text-brand text-lg font-bold">⬡</span>
+          <span class="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full bg-mint shadow-[0_0_10px_2px_rgba(52,211,153,.7)]"></span>
+        </div>
+        <div class="min-w-0">
+          <h1 class="disp text-[19px] sm:text-[22px] font-bold leading-none tracking-wide">
+            STACK<span class="text-brand">LAB</span>
+          </h1>
+          <p class="mono text-[10.5px] text-muted mt-1 truncate">interactive compound · organ · synergy mapping</p>
+        </div>
+      </div>
+
+      <div class="hidden md:flex items-center gap-2 ml-auto mono text-[11px]">
+        <span id="hCompounds" class="pill rounded-lg px-2.5 py-1 text-brand">0 compounds</span>
+        <span id="hSyn" class="pill rounded-lg px-2.5 py-1 text-mint">0 synergies</span>
+        <span id="hClash" class="pill rounded-lg px-2.5 py-1 text-rose">0 clashes</span>
+      </div>
+      <button id="clearBtn" class="ml-auto md:ml-0 pill rounded-lg px-3 py-1.5 mono text-[11px] text-muted hover:text-rose hover:border-rose/50 transition">⌫ clear</button>
+    </div>
+  </header>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="flex-1 max-w-[1500px] w-full mx-auto px-3 sm:px-6 py-5 grid gap-5
+               grid-cols-1 lg:grid-cols-[330px_minmax(0,1fr)_360px]">
+
+    <!-- ----- LEFT: SELECTOR ----- -->
+    <aside class="rise glass glow rounded-2xl flex flex-col overflow-hidden min-h-[520px] lg:max-h-[calc(100vh-128px)] lg:sticky lg:top-[88px]" style="animation-delay:.05s">
+      <div class="p-4 border-b border-line">
+        <p class="disp text-[12px] tracking-[.18em] text-muted">01 · GOAL PRESETS</p>
+        <div id="presets" class="mt-3 flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <div class="px-4 pt-4">
+        <p class="disp text-[12px] tracking-[.18em] text-muted">02 · BUILD STACK</p>
+        <div class="mt-3 relative">
+          <input id="search" type="text" placeholder="search compounds…"
+                 class="w-full bg-ink/70 border border-line rounded-lg pl-9 pr-3 py-2 mono text-[12.5px] text-txt placeholder:text-muted/70 focus:outline-none focus:border-brand/60 focus:ring-1 focus:ring-brand/30" />
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">⌕</span>
+        </div>
+        <div id="tabs" class="mt-3 flex items-center gap-1 text-[12px] mono border-b border-line"></div>
+        <div id="filters" class="mt-2.5 flex flex-wrap items-center gap-1.5"></div>
+      </div>
+
+      <div id="compoundList" class="scroll flex-1 overflow-y-auto p-3 space-y-2"></div>
+    </aside>
+
+    <!-- ----- CENTER: GRAPH ----- -->
+    <section class="rise glass glow rounded-2xl flex flex-col overflow-hidden min-h-[420px] lg:min-h-[calc(100vh-128px)]" style="animation-delay:.12s">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-line">
+        <div>
+          <p class="disp text-[13px] tracking-[.16em]">LIVE NETWORK</p>
+          <p class="mono text-[10.5px] text-muted mt-0.5">compounds → target organs · live pathways</p>
+        </div>
+        <div class="flex items-center gap-3 mono text-[10.5px] text-muted">
+          <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-full" style="background:var(--sky)"></i>organ</span>
+          <span class="flex items-center gap-1.5"><i class="h-2 w-4 rounded-full" style="background:var(--mint)"></i>synergy</span>
+          <span class="flex items-center gap-1.5"><i class="h-2 w-4 rounded-full" style="background:var(--rose); border-bottom:2px dashed var(--rose)"></i>clash</span>
+        </div>
+      </div>
+      <div class="relative flex-1">
+        <div class="scanline"></div>
+        <div id="net"></div>
+        <div id="netEmpty" class="empty-net">
+          <span class="disp text-[15px] text-muted">⬡ no compounds selected</span>
+          <span class="mono text-[11px] text-muted/70">pick a preset or add compounds to render the map</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ----- RIGHT: BLUEPRINT ----- -->
+    <aside class="rise glass glow rounded-2xl flex flex-col overflow-hidden lg:max-h-[calc(100vh-128px)] lg:sticky lg:top-[88px]" style="animation-delay:.19s">
+      <div class="px-4 py-3 border-b border-line flex items-center gap-2">
+        <span class="h-2 w-2 rounded-full bg-brand animate-pulse"></span>
+        <p class="disp text-[13px] tracking-[.16em]">LIVE BLUEPRINT</p>
+      </div>
+      <div class="scroll flex-1 overflow-y-auto p-4 space-y-5">
+
+        <div id="bpSummary"></div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-brand/80 mb-2">▸ PRIMARY GOALS</p>
+          <p id="bpGoals" class="text-[13px] leading-relaxed text-txt/85"></p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="disp text-[11px] tracking-[.18em] text-amber/80">▸ ORGAN-LOAD HEATMAP</p>
+            <span class="mono text-[9px] text-muted/60">weighted</span>
+          </div>
+          <div id="bpHeat" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-rose/80 mb-2">▸ STACK FLAGS</p>
+          <div id="bpFlags" class="space-y-1.5"></div>
+        </div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-sky/80 mb-2">▸ SMART RECOMMENDATIONS</p>
+          <div id="bpRecs" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-mint/80 mb-2">▸ LABS TO MONITOR</p>
+          <div id="bpLabs" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-violet/80 mb-2">▸ FOOD / DRUG WATCH</p>
+          <div id="bpFood" class="space-y-1.5"></div>
+        </div>
+
+        <div>
+          <p class="disp text-[11px] tracking-[.18em] text-muted mb-2">▸ TARGETED SYSTEMS</p>
+          <div id="bpOrgans" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="border-t border-line/70 mt-2">
+    <div class="max-w-[1500px] mx-auto px-6 py-4 mono text-[10.5px] text-muted flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+      <span>STACKLAB · open client-side tool · no accounts, no data leaves your browser</span>
+      <span class="text-amber/80">⚠ Education &amp; peer-discussion only — not medical advice. Many compounds are investigational / Rx; consult a clinician.</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ===================== INFO DRAWER ===================== -->
+<div id="backdrop" class="backdrop fixed inset-0 z-40 bg-black/60 opacity-0 pointer-events-none"></div>
+<div id="drawer" class="drawer closed fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] glass border-l border-line overflow-y-auto scroll">
+  <div id="drawerBody" class="p-6"></div>
+</div>
+
+<!-- ===================== DATA + APP ===================== -->
+<script src="compoundsData.js"></script>
+<script>
+(function(){
+  "use strict";
+  const COMPOUNDS = window.COMPOUNDS || [];
+  const ORGANS = window.ORGANS || [];
+  const PRESETS = window.GOAL_PRESETS || {};
+  const byId = Object.fromEntries(COMPOUNDS.map(c => [c.id, c]));
+
+  const CAT = {
+    peptide:   { label:"Peptides",          color:"#2dd4bf" },
+    supplement:{ label:"Supplements",       color:"#a78bfa" },
+    oral:      { label:"Oral / Tablets & Others", color:"#fbbf24" }
+  };
+  const EFFECT = { positive:"#34d399", caution:"#fbbf24", negative:"#fb7185" };
+  const REV = {
+    yes:     { label:"reversible",            color:"#34d399" },
+    caution: { label:"reversible · caution",  color:"#fbbf24" },
+    no:      { label:"not fully reversible",  color:"#fb7185" }
+  };
+  const EVR = { A:4, B:3, C:2, D:1, X:0 };
+  const EV_CYCLE = ["all","A","B","C"];
+  const EV_LABEL = { all:"evidence · all", A:"evidence · A only", B:"evidence · A–B", C:"evidence · A–C" };
+  const EV_FLOOR = { all:0, A:4, B:3, C:2 };
+  const DANGER = /contraindicat|dangerous|avoid|seizure|crisis|bleeding|hypotension|lactic|hypo\b|relapse|syndrome/i;
+
+  const state = { active: new Set(), tab: "peptide", q: "", preset: null, rev: false, ev: "all" };
+
+  /* ---------------- STACK-INTELLIGENCE MODEL ---------------- */
+  // weighted organ load: a negative hit weighs more than a caution; a "support" effect adds none
+  const ORGAN_W = { negative:2.5, caution:1, positive:0 };
+  const INTENSE = /hepatotox|tanks?|crash|severe|↓↓|shutdown|irreversibl|toxic|arrhythm|hypertroph|tachy|proliferat|atroph|polycyth/i;
+  const HIGH_REF = 6; // load value that fills a heatmap bar
+  function loadTier(v){
+    if(v < 2) return { label:"LOW",  color:"#38bdf8" };
+    if(v < 4) return { label:"MOD",  color:"#fbbf24" };
+    return           { label:"HIGH", color:"#fb7185" };
+  }
+  // clash severity tiers — "dangerous hypoglycemia" must not render like "redundant"
+  const SEV = {
+    critical:{ rank:3, label:"CRITICAL",  color:"#fb7185", icon:"■", box:"bg-rose/10 border-rose/30",  txt:"text-rose"  },
+    moderate:{ rank:2, label:"CAUTION",   color:"#fbbf24", icon:"▲", box:"bg-amber/[.07] border-amber/25", txt:"text-amber" },
+    minor:   { rank:1, label:"REDUNDANT", color:"#7f9aa0", icon:"●", box:"bg-white/[.03] border-line",  txt:"text-muted" }
+  };
+  const RE_CRIT  = /danger|hypoglycemi|\bhypo\b|seizure|crisis|serotonin syndrome|contraindicat|bleeding|lactic|arrhythmi|cardiac|myopath|rhabdo|overload|telangiectas/i;
+  const RE_MINOR = /redundant|overlap|pick one|overkill|double|2nd |both\b|same day/i;
+  function clashSev(risk){ risk = String(risk||""); return RE_CRIT.test(risk) ? "critical" : (RE_MINOR.test(risk) ? "minor" : "moderate"); }
+
+  // polypharmacy detectors — curated where text isn't reliable, else derived from fields
+  const SEDATIVE  = new Set(["melatonin","glycine","magnesium","l-theanine","dsip","selank","apigenin","ashwagandha","tart-cherry"]);
+  const STIMULANT = new Set(["caffeine","nicotine","modafinil","bupropion","semax","l-tyrosine","rhodiola"]);
+  function sigText(c){ return [c.class,(c.cautions||[]).join(" "),(c.bloodMarkerImpact||[]).join(" "),(c.targetOrgans||[]).map(t=>t.note).join(" ")].join(" ").toLowerCase(); }
+  function detectTags(act){
+    const t = { glu:[], hr:[], stim:[], sed:[], liver:[], igf:[], bleed:[], bp:[] };
+    act.forEach(c => {
+      const s = sigText(c), m = (c.bloodMarkerImpact||[]).join(" ").toLowerCase();
+      if(/↓\s*(glucose|hba1c)/.test(m)) t.glu.push(c.name);
+      if(/↑\s*(hr|bp|heart rate|blood pressure)|tachy|arrhythm|vasoconstrict/.test(s)) t.hr.push(c.name);
+      if(STIMULANT.has(c.id) || /wakefulness|overstimulat/.test(s)) t.stim.push(c.name);
+      if(SEDATIVE.has(c.id)) t.sed.push(c.name);
+      if((c.targetOrgans||[]).some(o=>o.organ==="Liver"&&o.effect==="negative") || /hepatotox/.test(s)) t.liver.push(c.name);
+      if(/↑\s*igf-1/.test(m)) t.igf.push(c.name);
+      if(/antiplatelet|anticoagulant|bleeding/.test(s) || (c.foodDrug||[]).some(f=>/bleeding|anticoagulant/i.test(f.effect))) t.bleed.push(c.name);
+      if(/↓\s*(bp|blood pressure)/.test(m) || /pde5|vasodilat/.test(s)) t.bp.push(c.name);
+    });
+    return t;
+  }
+  // free-text blood-marker → canonical lab test
+  const LABMAP = [
+    [/igf-?1/i,"IGF-1"],
+    [/glucose|hba1c|insulin (sensitiv|resist)|↑ ?insulin/i,"Fasting glucose / HbA1c"],
+    [/\balt\b|\bast\b|liver|hepatot|transaminas/i,"Liver panel (ALT/AST)"],
+    [/hdl|ldl|lipid|apob|triglycer|\btg\b|cholesterol/i,"Lipid panel (ApoB / LDL / HDL / TG)"],
+    [/hematocrit|haematocrit|hemoglob|red cell|polycyth/i,"CBC / hematocrit"],
+    [/uric acid|urate/i,"Uric acid"],
+    [/estradiol|\be2\b/i,"Estradiol (E2)"],
+    [/testosterone|\blh\b|\bfsh\b|shbg/i,"Testosterone / LH / FSH"],
+    [/prolactin/i,"Prolactin"],
+    [/tsh|thyroid|\bt3\b|\bt4\b/i,"Thyroid panel (TSH / fT3 / fT4)"],
+    [/\bb12\b|cobalamin/i,"Vitamin B12"],
+    [/\bpsa\b/i,"PSA"],
+    [/\bck\b|creatine kinase/i,"Creatine kinase (CK)"],
+    [/creatinine|egfr|renal|kidney/i,"Kidney panel (creatinine / eGFR)"],
+    [/lipase|pancreat/i,"Lipase (pancreatic)"],
+    [/\bcrp\b|inflammat/i,"hs-CRP (inflammation)"],
+    [/sodium|hyponatr|siadh/i,"Sodium / electrolytes"],
+    [/potassium|electrolyte/i,"Electrolytes (K⁺ / Mg²⁺)"],
+    [/lactate/i,"Lactate"],
+    [/homocyst/i,"Homocysteine"],
+    [/25-oh|vitamin d|calcium/i,"Vitamin D / calcium"],
+    [/blood pressure|\bbp\b/i,"Blood pressure"],
+    [/\bhr\b|heart rate/i,"Resting heart rate"],
+    [/bone density|\bdexa\b/i,"Bone density (DEXA)"]
+  ];
+
+  /* ---------------- DOM refs ---------------- */
+  const $ = s => document.querySelector(s);
+  const elList = $("#compoundList"), elTabs = $("#tabs"), elPresets = $("#presets"),
+        elSearch = $("#search"), elNetEmpty = $("#netEmpty");
+
+  /* ---------------- PRESETS ---------------- */
+  Object.entries(PRESETS).forEach(([key, p]) => {
+    const b = document.createElement("button");
+    b.className = "preset pill rounded-lg px-2.5 py-1.5 mono text-[11px] text-muted";
+    b.dataset.key = key;
+    b.innerHTML = `<span class="mr-1 opacity-80">${p.icon}</span>${p.label}`;
+    b.onclick = () => applyPreset(key);
+    elPresets.appendChild(b);
+  });
+  function applyPreset(key){
+    const p = PRESETS[key]; if(!p) return;
+    const same = state.preset === key;
+    state.active = new Set(same ? [] : p.ids.filter(id => byId[id]));
+    state.preset = same ? null : key;
+    render();
+  }
+
+  /* ---------------- TABS ---------------- */
+  Object.entries(CAT).forEach(([key,c], i) => {
+    const t = document.createElement("button");
+    t.className = "tab px-2.5 py-2 text-muted";
+    t.dataset.key = key; t.dataset.on = i===0 ? "1":"0";
+    t.textContent = c.label.replace(" / Tablets & Others","");
+    t.onclick = () => { state.tab = key; render(); };
+    elTabs.appendChild(t);
+  });
+
+  /* ---------------- FILTERS ---------------- */
+  const elFilters = $("#filters");
+  const revBtn = document.createElement("button");
+  revBtn.className = "pill rounded-md px-2 py-1 mono text-[10px] text-muted transition";
+  revBtn.innerHTML = "♻ reversible only";
+  revBtn.title = "Show only compounds whose effects are fully reversible";
+  revBtn.onclick = () => {
+    state.rev = !state.rev;
+    revBtn.classList.toggle("text-mint", state.rev);
+    revBtn.classList.toggle("text-muted", !state.rev);
+    revBtn.style.borderColor = state.rev ? "rgba(52,211,153,.5)" : "";
+    revBtn.style.background = state.rev ? "rgba(52,211,153,.08)" : "";
+    renderList();
+  };
+  elFilters.appendChild(revBtn);
+
+  const evBtn = document.createElement("button");
+  evBtn.className = "pill rounded-md px-2 py-1 mono text-[10px] text-muted transition";
+  evBtn.textContent = EV_LABEL.all;
+  evBtn.title = "Filter by minimum evidence grade";
+  evBtn.onclick = () => {
+    state.ev = EV_CYCLE[(EV_CYCLE.indexOf(state.ev) + 1) % EV_CYCLE.length];
+    evBtn.textContent = EV_LABEL[state.ev];
+    const on = state.ev !== "all";
+    evBtn.classList.toggle("text-sky", on);
+    evBtn.classList.toggle("text-muted", !on);
+    evBtn.style.borderColor = on ? "rgba(56,189,248,.5)" : "";
+    evBtn.style.background = on ? "rgba(56,189,248,.07)" : "";
+    renderList();
+  };
+  elFilters.appendChild(evBtn);
+
+  elSearch.addEventListener("input", e => { state.q = e.target.value.toLowerCase().trim(); renderList(); });
+  $("#clearBtn").onclick = () => { state.active.clear(); state.preset=null; render(); };
+
+  /* ---------------- LIST ---------------- */
+  function renderList(){
+    [...elTabs.children].forEach(t => t.dataset.on = t.dataset.key===state.tab ? "1":"0");
+    const items = COMPOUNDS.filter(c => {
+      if(state.rev && c.reversible !== "yes") return false;
+      if(state.ev !== "all" && (EVR[c.evidence]||0) < EV_FLOOR[state.ev]) return false;
+      return state.q
+        ? (c.name.toLowerCase().includes(state.q) || c.class.toLowerCase().includes(state.q))
+        : c.category === state.tab;
+    });
+    elList.innerHTML = "";
+    if(!items.length){
+      elList.innerHTML = `<p class="mono text-[12px] text-muted/70 px-1 py-6 text-center">no match${(state.rev||state.ev!=='all')?' · loosen filters':''}</p>`; return;
+    }
+    items.forEach(c => {
+      const on = state.active.has(c.id);
+      const col = CAT[c.category].color;
+      const card = document.createElement("div");
+      card.className = "card pill rounded-xl p-3 cursor-pointer select-none";
+      card.dataset.on = on ? "1":"0";
+      card.innerHTML = `
+        <div class="flex items-start gap-2.5">
+          <span class="mt-1 h-2.5 w-2.5 rounded-full shrink-0" style="background:${col};box-shadow:0 0 8px ${col}88"></span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="font-semibold text-[13.5px] text-txt truncate">${c.name}</p>
+              <span class="mono text-[9px] px-1 rounded border border-line text-muted shrink-0">${c.evidence}</span>
+              <span class="h-1.5 w-1.5 rounded-full shrink-0" style="background:${REV[c.reversible].color}" title="${REV[c.reversible].label}"></span>
+            </div>
+            <p class="mono text-[10.5px] text-muted mt-0.5 leading-snug">${c.class}</p>
+            <p class="mono text-[10px] text-muted/70 mt-1">t½ ${c.halfLife}</p>
+          </div>
+          <div class="flex flex-col items-end gap-1.5 shrink-0">
+            <button data-info="${c.id}" title="details" class="h-6 w-6 grid place-items-center rounded-md border border-line text-muted hover:text-sky hover:border-sky/50 transition mono text-[12px]">ⓘ</button>
+            <span class="mono text-[10px] ${on?'text-mint':'text-muted/60'}">${on?'● in':'＋ add'}</span>
+          </div>
+        </div>`;
+      card.onclick = (e) => {
+        if(e.target.closest("[data-info]")) return;
+        toggle(c.id);
+      };
+      card.querySelector("[data-info]").onclick = (e) => { e.stopPropagation(); openDrawer(c.id); };
+      elList.appendChild(card);
+    });
+  }
+  function toggle(id){
+    if(state.active.has(id)) state.active.delete(id); else state.active.add(id);
+    state.preset = null; render();
+  }
+
+  /* ---------------- NETWORK GRAPH ---------------- */
+  let network = null, nodes = null, edges = null;
+  function initNet(){
+    nodes = new vis.DataSet([]); edges = new vis.DataSet([]);
+    network = new vis.Network($("#net"), {nodes, edges}, {
+      autoResize:true,
+      nodes:{
+        shape:"dot", size:15, font:{ color:"#dfeaec", face:"IBM Plex Mono", size:13, strokeWidth:0 },
+        borderWidth:2, shadow:{ enabled:true, color:"rgba(0,0,0,.5)", size:14, x:0, y:5 }
+      },
+      edges:{ smooth:{ type:"continuous", roundness:.45 }, color:{ inherit:false }, font:{ color:"#7d979c", face:"IBM Plex Mono", size:10, strokeWidth:0, background:"rgba(6,11,12,.7)" } },
+      interaction:{ hover:true, tooltipDelay:120, dragNodes:true, zoomView:true },
+      physics:{ solver:"forceAtlas2Based",
+        forceAtlas2Based:{ gravitationalConstant:-58, centralGravity:.012, springLength:135, springConstant:.09, damping:.5, avoidOverlap:.6 },
+        stabilization:{ iterations:160 } }
+    });
+    network.on("click", p => { if(p.nodes.length && String(p.nodes[0]).startsWith("c:")) openDrawer(String(p.nodes[0]).slice(2)); });
+  }
+  function renderNet(){
+    const act = [...state.active].map(id => byId[id]).filter(Boolean);
+    elNetEmpty.style.display = act.length ? "none" : "flex";
+    if(!network) initNet();
+
+    const N = [], E = [], usedOrgans = new Set();
+    act.forEach(c => {
+      const col = CAT[c.category].color;
+      N.push({ id:"c:"+c.id, label:c.name, color:{ background:col+"22", border:col, highlight:{ background:col+"33", border:col } },
+               size:18, font:{ color:"#eaf6f4", size:13.5 }, title:c.class });
+      (c.targetOrgans||[]).forEach(t => usedOrgans.add(t.organ));
+    });
+    usedOrgans.forEach(org => {
+      N.push({ id:"o:"+org, label:org, shape:"hexagon", size:13,
+               color:{ background:"#0e2024", border:"#38bdf8", highlight:{ background:"#10262b", border:"#7dd3fc" } },
+               font:{ color:"#9fd6ea", size:11.5 } });
+    });
+    // compound -> organ
+    act.forEach(c => (c.targetOrgans||[]).forEach(t => {
+      const col = EFFECT[t.effect] || "#5b7c81";
+      E.push({ from:"c:"+c.id, to:"o:"+t.organ, color:{ color:col+"99", highlight:col },
+               width: t.effect==="positive"?1.4:1.8, dashes: t.effect!=="positive", title:t.note });
+    }));
+    // synergy / clash (both active, de-duped)
+    const seen = new Set();
+    act.forEach(c => {
+      (c.synergies||[]).forEach(s => {
+        if(!state.active.has(s.id)) return;
+        const k = ["syn",...[c.id,s.id].sort()].join("|"); if(seen.has(k)) return; seen.add(k);
+        E.push({ from:"c:"+c.id, to:"c:"+s.id, color:{ color:"#34d399", highlight:"#6ee7b7" }, width:3,
+                 label:"synergy", title:s.reason, smooth:{ type:"curvedCW", roundness:.18 } });
+      });
+      (c.clashes||[]).forEach(s => {
+        if(!state.active.has(s.id)) return;
+        const k = ["cl",...[c.id,s.id].sort()].join("|"); if(seen.has(k)) return; seen.add(k);
+        const sv = SEV[clashSev(s.risk)];
+        E.push({ from:"c:"+c.id, to:"c:"+s.id, color:{ color:sv.color, highlight:sv.color },
+                 width: sv.rank===3?3.6:sv.rank===2?2.4:1.4, dashes: sv.rank===1?[2,5]:[6,5],
+                 label: sv.rank===3?"⚠ clash":(sv.rank===1?"redundant":"clash"), title:`[${sv.label}] ${s.risk}`,
+                 smooth:{ type:"curvedCCW", roundness:.22 } });
+      });
+    });
+    nodes.clear(); edges.clear(); nodes.add(N); edges.add(E);
+  }
+
+  /* ---------------- BLUEPRINT ---------------- */
+  const GOAL_MAP = [
+    { organ:"Adipose Tissue", txt:"adipose lipolysis &amp; fat loss" },
+    { organ:"Skeletal Muscle", txt:"lean-mass support &amp; recovery" },
+    { organ:"Brain / CNS", txt:"cognition, focus &amp; mood" },
+    { organ:"Mitochondria", txt:"cellular energy &amp; longevity" },
+    { organ:"Pancreas", txt:"glucose control &amp; insulin sensitivity" },
+    { organ:"Liver", txt:"metabolic / liver support" },
+    { organ:"Skin / Connective", txt:"skin &amp; connective-tissue repair" },
+    { organ:"Immune System", txt:"immune &amp; inflammation balance" },
+    { organ:"Cardiovascular", txt:"cardiovascular support" },
+    { organ:"Endocrine", txt:"hormonal / endocrine modulation" }
+  ];
+  function renderBlueprint(){
+    const act = [...state.active].map(id => byId[id]).filter(Boolean);
+
+    // Primary goals
+    const posOrg = new Set();
+    act.forEach(c => (c.targetOrgans||[]).forEach(t => { if(t.effect==="positive") posOrg.add(t.organ); }));
+    const goals = GOAL_MAP.filter(g => posOrg.has(g.organ)).map(g => g.txt);
+    $("#bpGoals").innerHTML = act.length
+      ? `This stack targets <span class="text-brand">${goals.slice(0,5).join("</span> · <span class='text-brand'>")}</span>${goals.length>5?" <span class='text-muted'>…</span>":""}.`
+      : `<span class="text-muted/70">Add compounds to synthesize the stack's primary objectives.</span>`;
+
+    // ---- Weighted organ-load + support/stress totals
+    const load = {}, contrib = {};
+    let support = 0, stress = 0;
+    act.forEach(c => (c.targetOrgans||[]).forEach(t => {
+      if(t.effect === "positive"){ support += 1; return; }
+      let w = ORGAN_W[t.effect] || 0;
+      if(w>0 && INTENSE.test(t.note||"")) w += 1;   // heavier weight for severe wording
+      if(w<=0) return;
+      stress += w;
+      load[t.organ] = (load[t.organ]||0) + w;
+      (contrib[t.organ] = contrib[t.organ] || []).push(c.name + (t.effect==="negative" ? " ⚑" : ""));
+    }));
+    const heat = Object.entries(load).sort((a,b)=>b[1]-a[1]);
+    const peak = heat.length ? heat[0] : null;
+    $("#bpHeat").innerHTML = act.length
+      ? (heat.length ? heat.map(([org,v]) => {
+          const tier = loadTier(v), pct = Math.min(100, Math.round(v/HIGH_REF*100));
+          const who = (contrib[org]||[]).join(", ").replace(/"/g,"&quot;");
+          return `<div title="${who}">
+            <div class="flex items-center justify-between mb-1">
+              <span class="mono text-[11px] text-txt/85">${org}</span>
+              <span class="mono text-[9.5px]" style="color:${tier.color}">${tier.label} · ${(contrib[org]||[]).length}×</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div class="h-full rounded-full" style="width:${pct}%;background:${tier.color};box-shadow:0 0 8px ${tier.color}66"></div>
+            </div></div>`;
+        }).join("")
+        : `<p class="mono text-[11.5px] text-mint/80">✓ no organ-stress load — support-only stack.</p>`)
+      : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
+
+    // ---- Balance summary banner
+    const tot = support + stress;
+    const supPct = tot ? Math.round(support/tot*100) : 100;
+    const strPct = 100 - supPct;
+    const peakTier = peak ? loadTier(peak[1]) : loadTier(0);
+    let critN = 0; const seenCb = new Set();
+    act.forEach(c => (c.clashes||[]).forEach(s => {
+      if(!state.active.has(s.id)) return;
+      const k=[c.id,s.id].sort().join("|"); if(seenCb.has(k))return; seenCb.add(k);
+      if(clashSev(s.risk)==="critical") critN++;
+    }));
+    const notRev = act.filter(c => c.reversible==="no");
+    const chip = (txt,col) => `<span class="mono text-[9.5px] px-1.5 py-0.5 rounded border" style="color:${col};border-color:${col}44;background:${col}12">${txt}</span>`;
+    $("#bpSummary").innerHTML = act.length ? `
+      <div class="rounded-xl border border-line bg-ink/40 p-3">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="disp text-[10.5px] tracking-[.18em] text-muted">STACK BALANCE</span>
+          <span class="mono text-[10px]" style="color:${peakTier.color}">${strPct>55?'STRESS-HEAVY':strPct>32?'SOME LOAD':'WELL BALANCED'}</span>
+        </div>
+        <div class="h-2.5 rounded-full overflow-hidden flex" style="background:#1a2a2e">
+          <div style="width:${supPct}%;background:linear-gradient(90deg,#34d399,#2dd4bf)"></div>
+          <div style="width:${strPct}%;background:linear-gradient(90deg,#fbbf24,#fb7185)"></div>
+        </div>
+        <div class="flex justify-between mono text-[9px] mt-1">
+          <span class="text-mint">support ${supPct}%</span><span class="text-rose">stress ${strPct}%</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          ${chip(act.length+" compounds","#6f8a8f")}
+          ${critN?chip(critN+" critical clash"+(critN>1?"es":""),"#fb7185"):""}
+          ${notRev.length?chip(notRev.length+" not reversible","#fb7185"):""}
+          ${peak?chip("peak: "+peak[0],peakTier.color):""}
+        </div>
+      </div>` : "";
+
+    // ---- Stack flags (polypharmacy + reversibility)
+    const tags = detectTags(act);
+    const cap = arr => arr.slice(0,4).join(", ") + (arr.length>4 ? " +"+(arr.length-4) : "");
+    const flags = [];
+    const pushFlag = (arr, min, lvl, msg) => { if(arr.length>=min) flags.push({ lvl, msg:msg(arr.length), names:cap(arr) }); };
+    pushFlag(tags.glu,   2, tags.glu.length>=3?"crit":"warn", n=>`${n} glucose-lowering agents — additive hypoglycemia risk`);
+    pushFlag(tags.hr,    2, tags.hr.length>=3?"crit":"warn",  n=>`${n} agents raise heart rate / BP — additive cardiac load`);
+    pushFlag(tags.stim,  2, "warn", n=>`${n} stimulants — additive overstimulation, anxiety & sleep loss`);
+    pushFlag(tags.sed,   3, "info", n=>`${n} CNS-calming agents — additive sedation`);
+    pushFlag(tags.liver, 2, "crit", n=>`${n} hepatotoxic compounds — cumulative liver strain`);
+    pushFlag(tags.igf,   2, "warn", n=>`${n} GH/IGF agents — additive IGF-1 & glucose load`);
+    pushFlag(tags.bleed, 2, "warn", n=>`${n} blood-thinning agents — additive bleeding risk`);
+    pushFlag(tags.bp,    2, "warn", n=>`${n} BP-lowering agents — additive hypotension`);
+    const cauRev = act.filter(c => c.reversible==="caution");
+    if(notRev.length) flags.unshift({ lvl:"crit", msg:`${notRev.length} compound(s) with effects that are not fully reversible`, names:cap(notRev.map(c=>c.name)) });
+    if(cauRev.length) flags.push({ lvl:"info", msg:`${cauRev.length} compound(s) carry a reversibility caveat`, names:cap(cauRev.map(c=>c.name)) });
+    const FLV = { crit:["■","text-rose","bg-rose/10 border-rose/30"], warn:["▲","text-amber","bg-amber/[.07] border-amber/25"], info:["●","text-sky","bg-sky/[.06] border-sky/25"] };
+    const flvRank = { crit:3, warn:2, info:1 };
+    flags.sort((a,b)=>flvRank[b.lvl]-flvRank[a.lvl]);
+    $("#bpFlags").innerHTML = act.length
+      ? (flags.length ? flags.map(f => { const [ic,tc,bc]=FLV[f.lvl]; return `
+          <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-1.5 border ${bc} ${f.lvl==='crit'?'warnpulse':''}">
+            <span class="${tc} shrink-0 mono">${ic}</span>
+            <span class="text-txt/80">${f.msg}<span class="block mono text-[10px] text-muted mt-0.5">${f.names}</span></span>
+          </div>`; }).join("")
+        : `<p class="mono text-[11.5px] text-mint/80">✓ no polypharmacy or reversibility flags.</p>`)
+      : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
+
+    // ---- Smart recommendations: tiered clashes → add-synergy → cofactor
+    const clashList = []; const seenC = new Set();
+    act.forEach(c => (c.clashes||[]).forEach(s => {
+      if(!state.active.has(s.id)) return;
+      const k = [c.id,s.id].sort().join("|"); if(seenC.has(k)) return; seenC.add(k);
+      clashList.push({ sev:clashSev(s.risk), a:c.name, b:byId[s.id].name, risk:s.risk });
+    }));
+    clashList.sort((x,y)=>SEV[y.sev].rank-SEV[x.sev].rank);
+    const clashHtml = clashList.map(cl => { const s=SEV[cl.sev]; return `
+      <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border ${s.box} ${cl.sev==='critical'?'warnpulse':''}">
+        <span class="${s.txt} shrink-0 mono" title="${s.label}">${s.icon}</span>
+        <span class="text-txt/80"><span class="mono text-[9px] ${s.txt} mr-1">[${s.label}]</span><b>${cl.a} × ${cl.b}</b> — ${cl.risk}</span>
+      </div>`; }).join("");
+
+    const seenSy = new Set(); const addHtmlArr = [];
+    act.forEach(c => (c.synergies||[]).forEach(s => {
+      if(state.active.has(s.id) || !byId[s.id]) return;
+      const k = c.id+">"+s.id; if(seenSy.has(k)) return; seenSy.add(k);
+      addHtmlArr.push(`<div data-add="${s.id}" role="button" class="rec flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border border-mint/30 bg-mint/[.06] cursor-pointer hover:border-mint/60">
+        <span class="text-mint shrink-0 mono">＋</span><span class="text-txt/80">Consider <b>${byId[s.id].name}</b> — ${s.reason}</span></div>`);
+    }));
+    const coHtml = act.filter(c=>c.cofactor).map(c => `
+      <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-2 border border-sky/25 bg-sky/[.06]">
+        <span class="text-sky shrink-0 mono">◆</span><span class="text-txt/80"><b>${c.name}:</b> ${c.cofactor}</span></div>`).join("");
+
+    const recsHtml = clashHtml + addHtmlArr.join("") + coHtml;
+    $("#bpRecs").innerHTML = act.length
+      ? (recsHtml || `<p class="mono text-[11.5px] text-muted/70">No modifiers — clean, minimal combination.</p>`)
+      : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
+    $("#bpRecs").querySelectorAll("[data-add]").forEach(el => el.onclick = () => toggle(el.getAttribute("data-add")));
+
+    // ---- Labs to monitor (aggregated from blood-marker impact + cofactor + cautions)
+    const labHits = new Map();
+    act.forEach(c => {
+      const text = [ (c.bloodMarkerImpact||[]).join(" ; "), c.cofactor||"", (c.cautions||[]).join(" ; ") ].join(" ; ");
+      LABMAP.forEach(([re,lab]) => { if(re.test(text)){ if(!labHits.has(lab)) labHits.set(lab,new Set()); labHits.get(lab).add(c.name); } });
+    });
+    const labRows = [...labHits.entries()].sort((a,b)=>b[1].size-a[1].size);
+    $("#bpLabs").innerHTML = act.length
+      ? (labRows.length ? labRows.map(([lab,set]) => {
+          const who = [...set].join(", ").replace(/"/g,"&quot;");
+          return `<span class="pill rounded-md px-2 py-1 mono text-[10.5px] text-mint/90 bg-mint/[.05]" title="${who}">${lab} <span class="text-muted">·${set.size}</span></span>`;
+        }).join("")
+        : `<span class="mono text-[11px] text-muted/70">No specific labs flagged.</span>`)
+      : `<span class="mono text-[11px] text-muted/70">—</span>`;
+
+    // food / drug watch (aggregated, danger-first)
+    const food = []; const seenF = new Set();
+    act.forEach(c => (c.foodDrug||[]).forEach(f => {
+      const k = c.id+"|"+f.with; if(seenF.has(k)) return; seenF.add(k);
+      food.push({ danger: DANGER.test(f.effect), with:f.with, name:c.name, effect:f.effect });
+    }));
+    food.sort((a,b) => (b.danger?1:0) - (a.danger?1:0));
+    $("#bpFood").innerHTML = act.length
+      ? (food.length ? food.map(f => `
+          <div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-1.5 ${f.danger?'warnpulse bg-rose/10 border border-rose/25':'bg-violet/[.06] border border-violet/20'}">
+            <span class="mono shrink-0 ${f.danger?'text-rose':'text-violet'}">${f.with}</span>
+            <span class="text-txt/80"><b class="text-txt/90">${f.name}</b> — ${f.effect}</span>
+          </div>`).join("")
+        : `<p class="mono text-[11.5px] text-mint/80">✓ no notable food/drug interactions flagged.</p>`)
+      : `<p class="mono text-[11.5px] text-muted/70">—</p>`;
+
+    // targeted systems chips
+    const organs = new Set(); act.forEach(c => (c.targetOrgans||[]).forEach(t => organs.add(t.organ)));
+    $("#bpOrgans").innerHTML = organs.size
+      ? [...organs].map(o => `<span class="pill rounded-md px-2 py-1 mono text-[10.5px] text-sky/90 bg-sky/[.05]">${o}</span>`).join("")
+      : `<span class="mono text-[11px] text-muted/70">—</span>`;
+  }
+
+  /* ---------------- DRAWER (info modal) ---------------- */
+  const drawer = $("#drawer"), backdrop = $("#backdrop");
+  function openDrawer(id){
+    const c = byId[id]; if(!c) return;
+    const col = CAT[c.category].color;
+    const row = (k,v) => `<div class="flex justify-between gap-3 py-1.5 border-b border-line/70"><span class="mono text-[11px] text-muted">${k}</span><span class="mono text-[11.5px] text-txt/90 text-right">${v}</span></div>`;
+    const list = (arr, cls) => (arr&&arr.length) ? `<ul class="space-y-1">${arr.map(x=>`<li class="text-[12px] leading-snug ${cls}">• ${x}</li>`).join("")}</ul>` : `<p class="mono text-[11px] text-muted/70">—</p>`;
+    const orgs = (c.targetOrgans||[]).map(t => `<span class="pill rounded-md px-2 py-0.5 mono text-[10px]" style="color:${EFFECT[t.effect]}" title="${String(t.note||'').replace(/"/g,'&quot;')}">${t.organ}</span>`).join(" ");
+    const rev = REV[c.reversible] || REV.yes;
+
+    const fd = (c.foodDrug && c.foodDrug.length)
+      ? `<div class="space-y-1.5">${c.foodDrug.map(f => {
+            const d = DANGER.test(f.effect);
+            return `<div class="flex gap-2 text-[12px] leading-snug rounded-lg px-2.5 py-1.5 ${d?'bg-rose/10 border border-rose/25':'bg-violet/[.06] border border-violet/20'}">
+              <span class="mono shrink-0 ${d?'text-rose':'text-violet'}">${f.with}</span>
+              <span class="text-txt/75">${f.effect}</span></div>`;
+          }).join("")}</div>`
+      : `<p class="mono text-[11px] text-muted/70">— none flagged</p>`;
+
+    const refsHtml = (c.refs && c.refs.length)
+      ? `<ul class="space-y-1 mb-2.5">${c.refs.map(r => `<li class="text-[12px] leading-snug text-txt/65">• ${r}</li>`).join("")}</ul>` : "";
+    const pubTerm = encodeURIComponent(c.name.replace(/\s*\(.*?\)\s*/g," ").trim());
+    const cofactorHtml = c.cofactor
+      ? `<p class="text-[11.5px] leading-relaxed text-sky/80 mt-2"><span class="mono text-[10px] text-sky/60">◆ COFACTOR · </span>${c.cofactor}</p>` : "";
+
+    $("#drawerBody").innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="mono text-[10px] px-2 py-0.5 rounded-full border" style="color:${col};border-color:${col}55;background:${col}12">${CAT[c.category].label}</span>
+            <span class="mono text-[10px] px-2 py-0.5 rounded-full border" style="color:${rev.color};border-color:${rev.color}55;background:${rev.color}12">${rev.label}</span>
+          </div>
+          <h2 class="disp text-[22px] font-bold mt-2 leading-tight">${c.name}</h2>
+          <p class="mono text-[11px] text-muted mt-1">${c.class}</p>
+        </div>
+        <button id="closeDrawer" class="h-8 w-8 grid place-items-center rounded-lg border border-line text-muted hover:text-rose hover:border-rose/50 transition shrink-0">✕</button>
+      </div>
+
+      <p class="text-[13px] leading-relaxed text-txt/80 mt-4">${c.desc}</p>
+
+      <div class="mt-5">${row("ROUTE", c.route)}${row("HALF-LIFE", c.halfLife)}${row("BIOAVAILABILITY", c.bioavailability)}${row("EVIDENCE GRADE", c.evidence)}</div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-sky/80 mb-2">TARGET ORGANS</p><div class="flex flex-wrap gap-1.5">${orgs||"—"}</div></div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-brand/80 mb-2">DOSING PARADIGM</p>
+        <p class="text-[12px] leading-relaxed text-txt/75">${c.dosingInfo}</p>${cofactorHtml}</div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-amber/80 mb-2">BLOOD-MARKER IMPACT</p>${list(c.bloodMarkerImpact,"text-amber/85")}</div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-violet/80 mb-2">FOOD / DRUG INTERACTIONS</p>${fd}</div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-rose/80 mb-2">CAUTIONS</p>${list(c.cautions,"text-rose/85")}</div>
+
+      <div class="mt-5"><p class="disp text-[11px] tracking-[.18em] text-sky/80 mb-2">RESEARCH</p>${refsHtml}
+        <a href="https://pubmed.ncbi.nlm.nih.gov/?term=${pubTerm}" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-1.5 mono text-[11px] text-sky hover:text-sky/80 border border-sky/30 hover:border-sky/60 rounded-lg px-2.5 py-1.5 transition">⌕ search PubMed ↗</a>
+        <p class="mono text-[10px] text-muted/60 mt-2 leading-snug">Named trials are starting points — verify primary sources yourself. Link runs a live PubMed search.</p>
+      </div>
+
+      <button id="drawerToggle" class="mt-6 w-full rounded-xl py-2.5 disp tracking-wide text-[13px] transition border
+        ${state.active.has(c.id) ? 'border-rose/50 text-rose bg-rose/10 hover:bg-rose/15' : 'border-mint/50 text-mint bg-mint/10 hover:bg-mint/15'}">
+        ${state.active.has(c.id) ? '⌫ REMOVE FROM STACK' : '＋ ADD TO STACK'}
+      </button>
+    `;
+    $("#closeDrawer").onclick = closeDrawer;
+    $("#drawerToggle").onclick = () => { toggle(c.id); openDrawer(c.id); };
+    drawer.classList.remove("closed");
+    backdrop.style.opacity = "1"; backdrop.style.pointerEvents = "auto";
+  }
+  function closeDrawer(){ drawer.classList.add("closed"); backdrop.style.opacity="0"; backdrop.style.pointerEvents="none"; }
+  backdrop.onclick = closeDrawer;
+  document.addEventListener("keydown", e => { if(e.key==="Escape") closeDrawer(); });
+
+  /* ---------------- counters + render ---------------- */
+  function updateCounts(){
+    const act = [...state.active];
+    let syn=0, cl=0; const sk=new Set(), ck=new Set();
+    act.forEach(id => {
+      const c = byId[id]; if(!c) return;
+      (c.synergies||[]).forEach(s => { if(state.active.has(s.id)){ const k=[id,s.id].sort().join("|"); if(!sk.has(k)){sk.add(k);syn++;} } });
+      (c.clashes||[]).forEach(s => { if(state.active.has(s.id)){ const k=[id,s.id].sort().join("|"); if(!ck.has(k)){ck.add(k);cl++;} } });
+    });
+    $("#hCompounds").textContent = act.length+" compounds";
+    $("#hSyn").textContent = syn+" synergies";
+    $("#hClash").textContent = cl+" clashes";
+    [...elPresets.children].forEach(b => b.dataset.on = b.dataset.key===state.preset ? "1":"0");
+  }
+  function render(){ renderList(); renderNet(); renderBlueprint(); updateCounts(); }
+
+  // boot
+  initNet(); render();
+})();
+</script>
+</body>
+</html>
